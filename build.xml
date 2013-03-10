@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE project>
+<project xmlns:ivy="antlib:org.apache.ivy.ant" default="publish">
+
+	<!-- properties -->
+	<property name="src.dir" value="src"/>
+	<property name="build.dir" value="build"/>
+	<property name="jar.filename" value="gson-rmi.jar"/>
+	
+	<!-- resolve -->
+	<target name="resolve">
+		<ivy:resolve />
+		<ivy:cachepath pathid="ivy.cachepath" />
+	</target>
+	
+	<!-- build -->
+	<target name="build" depends="resolve">
+		<javac srcdir="${src.dir}" destdir="${build.dir}/classes" classpath="ivy.cachepath" includeantruntime="false" />
+	</target>
+	
+	<!-- package -->
+	<target name="package" depends="build">
+		<jar file="${build.dir}/${jar.filename}">
+			<fileset dir="src"></fileset>
+			<fileset dir="${build.dir}/classes"></fileset>
+		</jar>
+	</target>
+
+	<!-- publish -->
+	<target name="publish" depends="package">
+		<ivy:publish resolver="local" overwrite="true" artifactspattern="${build.dir}/[artifact].[ext]" srcivypattern="[artifact].[ext]" />
+	</target>
+
+</project>

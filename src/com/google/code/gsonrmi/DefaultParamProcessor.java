@@ -10,10 +10,10 @@ import com.google.gson.Gson;
 
 public class DefaultParamProcessor implements ParamProcessor {
 	
-	private final Gson paramSerializer;
+	private final Gson paramDeserializer;
 	
-	public DefaultParamProcessor(Gson paramSerializer) {
-		this.paramSerializer = paramSerializer;
+	public DefaultParamProcessor(Gson paramDeserializer) {
+		this.paramDeserializer = paramDeserializer;
 	}
 
 	@Override
@@ -28,7 +28,7 @@ public class DefaultParamProcessor implements ParamProcessor {
 		if (param == null) return null;
 		ParamType paramTypeAnnotation = findAnnotation(paramAnnotations, ParamType.class);
 		if (paramTypeAnnotation != null) paramType = paramTypeAnnotation.value();
-		return param.getValue(paramType, paramSerializer);
+		return param.getValue(paramType, paramDeserializer);
 	}
 
 	@Override

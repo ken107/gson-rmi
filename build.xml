@@ -15,7 +15,9 @@
 	
 	<!-- build -->
 	<target name="build" depends="resolve">
-		<javac srcdir="${src.dir}" destdir="${build.dir}/classes" classpath="ivy.cachepath" includeantruntime="false" />
+		<javac srcdir="${src.dir}" destdir="${build.dir}/classes" includeantruntime="false">
+			<classpath refid="ivy.cachepath"></classpath>
+		</javac>
 	</target>
 	
 	<!-- package -->

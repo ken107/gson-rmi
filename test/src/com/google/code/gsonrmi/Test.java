@@ -26,19 +26,10 @@ public class Test {
 	}
 	
 	public static void main(String[] args) throws URISyntaxException {
-		//create object locator that returns our test object
-		final Test target = new Test();
-		ObjectLocator objectLocator = new ObjectLocator() {
-			@Override
-			public Object get(URI requestUri) {
-				return target;
-			}
-		};
-		
 		//create the invoker
 		Gson gson = new GsonBuilder().registerTypeAdapter(Parameter.class, new ParameterSerializer()).registerTypeAdapter(Exception.class, new ExceptionSerializer()).create();
 		ParamProcessor paramProcessor = new DefaultParamProcessor(gson);
-		Invoker invoker = new Invoker(objectLocator, new DefaultMethodLocator(paramProcessor), paramProcessor);
+		Invoker invoker = new Invoker(new DefaultMethodLocator(paramProcessor), paramProcessor);
 		
 		//create a sample request
 		Request r = new Request();
@@ -59,8 +50,9 @@ public class Test {
 		r = gson.fromJson(json, Request.class);
 		System.out.println(gson.toJson(r));
 		
-		//invoke
-		Response s = invoker.doInvoke(r);
+		//invoke on a test object
+		Test target = new Test();
+		Response s = invoker.doInvoke(r, target);
 		
 		//test response serialization
 		json = gson.toJson(s);

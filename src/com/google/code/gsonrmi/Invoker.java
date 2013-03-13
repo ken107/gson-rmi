@@ -7,23 +7,20 @@ import java.lang.reflect.Type;
 
 public class Invoker {
 
-	private final ObjectLocator objectLocator;
 	private final MethodLocator methodLocator;
 	private final ParamProcessor paramProcessor;
 	
-	public Invoker(ObjectLocator objectLocator, MethodLocator methodLocator, ParamProcessor paramProcessor) {
-		this.objectLocator = objectLocator;
+	public Invoker(MethodLocator methodLocator, ParamProcessor paramProcessor) {
 		this.methodLocator = methodLocator;
 		this.paramProcessor = paramProcessor;
 	}
 	
-	public Response doInvoke(Request request) {
+	public Response doInvoke(Request request, Object target) {
 		Response response = new Response();
 		response.id = request.id;
 		response.context = request.context;
 		
 		try {
-			Object target = objectLocator.get(request.requestURI);
 			if (target == null) throw new TargetNotFoundException(request.requestURI.toString());
 			
 			Method m = methodLocator.get(target, request.method, request.params);

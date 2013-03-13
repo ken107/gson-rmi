@@ -28,9 +28,9 @@ public class Parameter {
 		this.serializedValue = serializedValue;
 	}
 	
-	public Object getValue(Type type, Gson serializer) {
+	public Object getValue(Type type, Gson deserializer) {
 		if (value == null && serializedValue != null) {
-			value = serializer.fromJson(serializedValue, type);
+			value = deserializer.fromJson(serializedValue, type);
 			this.type = type;
 			serializedValue = null;
 		}

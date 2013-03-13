@@ -37,6 +37,16 @@ public class Parameter {
 		return value;
 	}
 	
+	@SuppressWarnings("unchecked")
+	public <T> T getValue(Class<T> type, Gson deserializer) {
+		if (value == null && serializedValue != null) {
+			value = deserializer.fromJson(serializedValue, type);
+			this.type = type;
+			serializedValue = null;
+		}
+		return (T) value;
+	}
+	
 	public JsonElement getSerializedValue(Gson serializer) {
 		if (serializedValue == null) serializedValue = serializer.toJsonTree(value, type);
 		return serializedValue;

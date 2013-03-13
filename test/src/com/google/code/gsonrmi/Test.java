@@ -1,6 +1,5 @@
 package com.google.code.gsonrmi;
 
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -33,7 +32,6 @@ public class Test {
 		
 		//create a sample request
 		Request r = new Request();
-		r.requestURI = new URI("rmi://anObject");
 		r.method = "aMethod";
 		r.params = new Parameter[] {
 				new Parameter("John"),
@@ -61,12 +59,5 @@ public class Test {
 		//test response deserialization
 		s = gson.fromJson(json, Response.class);
 		System.out.println(gson.toJson(s));
-		
-		
-		//NOTE: when implementing RMI clients, to handle a Response, you can convert it to a Request using this strategy:
-		//request = new Request();
-		//request.requestURI = <URI of an object to receive the return value, can be sent in the context of the original request>
-		//request.method = <a return method name can be sent in the context of the original request>
-		//request.params = [response.result, response.error, response.id];
 	}
 }

@@ -21,8 +21,6 @@ public class Invoker {
 		response.context = request.context;
 		
 		try {
-			if (target == null) throw new TargetNotFoundException(request.requestURI.toString());
-			
 			Method m = methodLocator.get(target, request.method, request.params);
 			if (m == null) throw new NoSuchMethodException(request.method);
 			

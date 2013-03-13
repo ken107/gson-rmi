@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.google.code.gsonrmi.annotations.Context;
+import com.google.code.gsonrmi.annotations.RMI;
 import com.google.code.gsonrmi.serializer.ExceptionSerializer;
 import com.google.code.gsonrmi.serializer.ParameterSerializer;
 import com.google.gson.Gson;
@@ -15,6 +16,7 @@ import com.google.gson.GsonBuilder;
 
 public class Test {
 	
+	@RMI("someMethod")
 	public List<String> aMethod(String firstName, String lastName, @Context Map<String, String> context) throws Exception {
 		LinkedList<String> out = new LinkedList<String>();
 		out.add("Hello, " + firstName + " " + lastName);
@@ -32,7 +34,7 @@ public class Test {
 		
 		//create a sample request
 		Request r = new Request();
-		r.method = "aMethod";
+		r.method = "someMethod";
 		r.params = new Parameter[] {
 				new Parameter("John"),
 				new Parameter((Object) null)

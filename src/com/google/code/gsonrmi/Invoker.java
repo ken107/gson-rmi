@@ -16,8 +16,8 @@ public class Invoker {
 		this.paramProcessor = paramProcessor;
 	}
 	
-	public Response doInvoke(Request request, Object target, Object context) {
-		Response response = new Response();
+	public RpcResponse doInvoke(RpcRequest request, Object target, Object context) {
+		RpcResponse response = new RpcResponse();
 		response.id = request.id;
 		try {
 			Method m = findMethod(target, request.method, request.params);
@@ -33,19 +33,19 @@ public class Invoker {
 			response.result = new Parameter(m.invoke(target, processedParams), m.getGenericReturnType());
 		}
 		catch (JsonParseException e) {
-			response.error = new Error(-32700, "Parse error");
+			response.error = new RpcError(-32700, "Parse error");
 		}
 		catch (InvocationTargetException e) {
-			response.error = new Error(-32000, "Invocation exception", e.getCause());
+			response.error = new RpcError(-32000, "Invocation exception", e.getCause());
 		}
 		catch (IllegalAccessException e) {
-			response.error = new Error(-32601, "Method not found");
+			response.error = new RpcError(-32601, "Method not found");
 		}
 		catch (IllegalArgumentException e) {
-			response.error = new Error(-32602, "Invalid params");
+			response.error = new RpcError(-32602, "Invalid params");
 		}
 		catch (NoSuchMethodException e) {
-			response.error = new Error(-32601, "Method not found");
+			response.error = new RpcError(-32601, "Method not found");
 		}
 		return response;
 	}

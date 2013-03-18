@@ -28,7 +28,7 @@ public class Test {
 		Invoker invoker = new Invoker(paramProcessor);
 		
 		//create a sample request
-		Request r = new Request();
+		RpcRequest r = new RpcRequest();
 		r.method = "someMethod";
 		r.params = new Parameter[] {
 				new Parameter("John"),
@@ -41,19 +41,19 @@ public class Test {
 		System.out.println(json);
 		
 		//test request deserialization
-		r = gson.fromJson(json, Request.class);
+		r = gson.fromJson(json, RpcRequest.class);
 		System.out.println(gson.toJson(r));
 		
 		//invoke on a test object
 		Test target = new Test();
-		Response s = invoker.doInvoke(r, target, null);
+		RpcResponse s = invoker.doInvoke(r, target, null);
 		
 		//test response serialization
 		json = gson.toJson(s);
 		System.out.println(json);
 		
 		//test response deserialization
-		s = gson.fromJson(json, Response.class);
+		s = gson.fromJson(json, RpcResponse.class);
 		System.out.println(gson.toJson(s));
 	}
 }

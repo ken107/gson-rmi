@@ -1,6 +1,6 @@
 package com.google.code.gsonrmi;
 
-public class Request {
+public class RpcRequest {
 
 	public String jsonrpc = "2.0";
 	public String method;

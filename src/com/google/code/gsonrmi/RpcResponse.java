@@ -1,9 +1,9 @@
 package com.google.code.gsonrmi;
 
-public class Response {
+public class RpcResponse {
 
 	public String jsonrpc = "2.0";
 	public Parameter result;
-	public Error error;
+	public RpcError error;
 	public Parameter id;
 }

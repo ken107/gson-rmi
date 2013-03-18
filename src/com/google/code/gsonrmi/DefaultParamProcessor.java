@@ -3,6 +3,7 @@ package com.google.code.gsonrmi;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
+import com.google.code.gsonrmi.Invoker.ParamProcessor;
 import com.google.code.gsonrmi.annotations.Context;
 import com.google.code.gsonrmi.annotations.Injected;
 import com.google.code.gsonrmi.annotations.ParamType;
@@ -17,14 +18,14 @@ public class DefaultParamProcessor implements ParamProcessor {
 	}
 
 	@Override
-	public Object injectParam(Type paramType, Annotation[] paramAnnotations, Parameter context) {
+	public Object injectParam(Type paramType, Annotation[] paramAnnotations, Object context) {
 		Context contextAnnotation = findAnnotation(paramAnnotations, Context.class);
-		if (contextAnnotation != null) return processParam(context, paramType, paramAnnotations, context);
+		if (contextAnnotation != null) return context;
 		return null;
 	}
 
 	@Override
-	public Object processParam(Parameter param, Type paramType, Annotation[] paramAnnotations, Parameter context) {
+	public Object processParam(Parameter param, Type paramType, Annotation[] paramAnnotations, Object context) {
 		if (param == null) return null;
 		ParamType paramTypeAnnotation = findAnnotation(paramAnnotations, ParamType.class);
 		if (paramTypeAnnotation != null) paramType = paramTypeAnnotation.value();

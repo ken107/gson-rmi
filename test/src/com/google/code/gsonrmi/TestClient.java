@@ -17,34 +17,38 @@ import com.google.code.gsonrmi.transport.tcp.TcpProxy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-public class Test {
+public class TestClient {
 	
 	private final Transport t;
+	private final Gson gson;
 	
-	public Test(Transport t) {
+	public TestClient(Transport t, Gson gson) {
 		this.t = t;
-	}
-	
-	@RMI
-	public int aMethod(String name) throws Exception {
-		//throw new NumberFormatException("Bad");
-		return name.length();
-	}
-	
-	@RMI
-	public void shutdown() {
-		t.shutdown();
+		this.gson = gson;
 	}
 
+	@RMI
+	public void returnValue(Integer value, RpcError error) {
+		System.out.println(value + " " + error);
+		if (error != null && error.code == -32000) error.data.getValue(Exception.class, gson).printStackTrace();
+		t.shutdown();
+	}
+	
 	public static void main(String[] args) throws IOException, URISyntaxException {
 		Gson gson = new GsonBuilder()
 				.registerTypeAdapter(Exception.class, new ExceptionSerializer())
 				.registerTypeAdapter(Parameter.class, new ParameterSerializer()).create();
 		
 		Transport t = new Transport();
-		new TcpProxy(Arrays.asList(new InetSocketAddress(30100)), t, gson).start();
+		new TcpProxy(Arrays.asList(new InetSocketAddress(30101)), t, gson).start();
 		new RmiService(t, gson).start();
 		
-		new Call(new Route(new URI("rmi:service")), "register", "anObject", new Test(t)).send(t);
+		new Call(new Route(new URI("rmi:service")), "register", "anotherObject", new TestClient(t, gson)).send(t);
+		
+		Route r = new Route(new URI("tcp://localhost:30100"), new URI("rmi:anObject"));
+		new Call(r, "aMethod", "Hello, World!").callback(new Route(new URI("rmi:anotherObject")), "returnValue").send(t);
+		new Call(r, "shutdown").send(t);
+		
+		//TODO: custom invoker/dedicated invoker, session
 	}
 }

@@ -17,4 +17,8 @@ public class RpcError {
 		this.message = message;
 		this.data = new Parameter(data);
 	}
+	
+	public String toString() {
+		return code + " " + message;
+	}
 }

@@ -39,7 +39,7 @@ public class Invoker {
 			response.error = new RpcError(-32000, "Invocation exception", e.getCause());
 		}
 		catch (IllegalAccessException e) {
-			response.error = new RpcError(-32601, "Method not found");
+			response.error = new RpcError(-32601, "Method not accessible");
 		}
 		catch (IllegalArgumentException e) {
 			response.error = new RpcError(-32602, "Invalid params");
@@ -66,7 +66,7 @@ public class Invoker {
 		return null;
 	}
 	
-	public interface ParamProcessor {
+	public static interface ParamProcessor {
 		boolean isInjectedParam(Annotation[] paramAnnotations);
 		Object injectParam(Type paramType, Annotation[] paramAnnotations, Object context);
 		Object processParam(Parameter param, Type paramType, Annotation[] paramAnnotations, Object context);

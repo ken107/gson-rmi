@@ -15,6 +15,7 @@
 	
 	<!-- build -->
 	<target name="build" depends="resolve">
+		<mkdir dir="${build.dir}/classes"/>
 		<javac srcdir="${src.dir}" destdir="${build.dir}/classes" includeantruntime="false">
 			<classpath refid="ivy.cachepath"></classpath>
 		</javac>
@@ -31,6 +32,12 @@
 	<!-- publish -->
 	<target name="publish" depends="package">
 		<ivy:publish resolver="local" overwrite="true" artifactspattern="${build.dir}/[artifact].[ext]" srcivypattern="[artifact].[ext]" />
+	</target>
+	
+	<!-- clean -->
+	<target name="clean">
+		<delete dir="${build.dir}/classes" />
+		<delete file="${build.dir}/${jar.filename}" />
 	</target>
 
 </project>

@@ -49,6 +49,6 @@ public class TestClient {
 		new Call(r, "aMethod", "Hello, World!").callback(new Route(new URI("rmi:anotherObject")), "returnValue").send(t);
 		new Call(r, "shutdown").send(t);
 		
-		//TODO: custom invoker/dedicated invoker, session
+		//TODO: session
 	}
 }

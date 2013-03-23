@@ -72,7 +72,7 @@ public abstract class Proxy extends Thread {
 			if (c != null) c.send(new Message(m.src, dests, m.content, m.contentType));
 			else failedRoutes.addAll(dests);
 		}
-		if (!failedRoutes.isEmpty()) {
+		if (!failedRoutes.isEmpty() && !m.contentOfType(DeliveryFailure.class)) {
 			Object failure = new DeliveryFailure(new Message(m.src, failedRoutes, m.content, m.contentType));
 			transport.send(new Message(null, Arrays.asList(m.src), failure));
 		}

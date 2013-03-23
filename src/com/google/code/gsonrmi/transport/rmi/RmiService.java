@@ -29,10 +29,10 @@ public class RmiService extends Thread {
 	private final URI addr;
 	private final BlockingQueue<Message> mq;
 	private final Transport t;
-	private final Map<String, Object> objs;
 	private final Gson gson;
 	private final Invoker invoker;
-	private final HashMap<Integer, Call> callbacks;
+	private final Map<String, RpcHandler> handlers;
+	private final Map<Integer, Call> pendingCalls;
 	private int idGen;
 	
 	public RmiService(Transport transport, Gson deserializer) throws URISyntaxException {
@@ -40,16 +40,17 @@ public class RmiService extends Thread {
 		mq = new LinkedBlockingQueue<Message>();
 		t = transport;
 		t.register(SCHEME, mq);
-		objs = new HashMap<String, Object>();
-		objs.put("service", this);
 		gson = deserializer;
 		invoker = new Invoker(new DefaultParamProcessor(gson));
-		callbacks = new HashMap<Integer, Call>();
+		handlers = new HashMap<String, RpcHandler>();
+		handlers.put("service", new DefaultRpcHandler(this, invoker));
+		pendingCalls = new HashMap<Integer, Call>();
 	}
 	
 	@RMI
-	public URI register(String id, Object o) throws URISyntaxException {
-		objs.put(id, o);
+	public URI register(String id, Object target) throws URISyntaxException {
+		if (target instanceof RpcHandler) handlers.put(id, (RpcHandler) target);
+		else handlers.put(id, new DefaultRpcHandler(target, invoker));
 		return new URI(SCHEME, id, null);
 	}
 	
@@ -63,60 +64,49 @@ public class RmiService extends Thread {
 	}
 	
 	private void handle(Call m) {
-		Integer id = null;
-		if (m.callback != null) {
-			id = ++idGen;
-			callbacks.put(id, m.callback);
-		}
+		Integer id = ++idGen;
+		pendingCalls.put(id, m);
 		RpcRequest request = new RpcRequest();
 		request.method = m.method;
 		request.params = m.params;
-		request.id = id == null ? null : new Parameter(id);
+		request.id = new Parameter(id);
 		t.send(new Message(new Route(addr), m.targets, request));
 	}
 	
 	private void handle(RpcRequest request, Message m) {
-		String targetId = getTargetId(m.dests.get(0));
-		Object target = targetId != null ? objs.get(targetId) : null;
-		RpcResponse response;
-		if (target != null) {
-			response = invoker.doInvoke(request, target, null);
+		URI targetUri = m.dests.get(0).hops.getFirst();
+		RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
+		if (handler != null) {
+			RpcResponse response = handler.handle(request, targetUri, m.src);
+			if (response != null) t.send(new Message(null, Arrays.asList(m.src), response));
 		}
 		else {
-			response = new RpcResponse();
+			RpcResponse response = new RpcResponse();
 			response.id = request.id;
-			response.error = new RpcError(-32001, "Target not found with id " + targetId);
+			response.error = new RpcError(-32001, "Target not found " + targetUri);
+			t.send(new Message(null, Arrays.asList(m.src), response));
 		}
-		t.send(new Message(null, Arrays.asList(m.src), response));
 	}
 	
 	private void handle(RpcResponse response) {
-		if (response.id != null) {
-			Integer responseId = response.id.getValue(Integer.class, gson);
-			Call callback = callbacks.get(responseId);
+		Integer responseId = response.id.getValue(Integer.class, gson);
+		Call pendingCall = pendingCalls.get(responseId);
+		if (pendingCall != null) {
+			Call callback = pendingCall.callback;
 			if (callback != null) {
-				String targetId = getTargetId(callback.targets.get(0));
-				Object target = targetId != null ? objs.get(targetId) : null;
-				if (target != null) {
-					RpcRequest request = new RpcRequest();
-					request.method = callback.method;
-					request.params = Arrays.copyOf(callback.params, callback.params.length+2);
-					request.params[request.params.length-2] = response.result;
-					request.params[request.params.length-1] = new Parameter(response.error);
-					RpcResponse r = invoker.doInvoke(request, target, null);
-					if (r.error != null) {
-						System.err.println("Invoke response failed: " + r.error);
-						if (r.error.code == -32000) r.error.data.getValue(Exception.class, gson).printStackTrace();
-					}
-				}
-				else System.err.println("Target not found with id " + targetId);
+				URI targetUri = callback.targets.get(0).hops.getFirst();
+				RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
+				if (handler != null) handler.handle(response, callback);
+				else System.err.println("Callback target not found " + targetUri);
 			}
-			else System.err.println("Callback missing with id " + responseId);
+			else {
+				if (response.error != null) {
+					System.err.println("Unhandled failure response: " + response.error);
+					if (response.error.code == -32000) response.error.data.getValue(Exception.class, gson).printStackTrace();
+				}
+			}
 		}
-		else if (response.error != null) {
-			System.err.println("Unhandled failure response: " + response.error);
-			if (response.error.code == -32000) response.error.data.getValue(Exception.class, gson).printStackTrace();
-		}
+		else System.err.println("No pending request with id " + responseId);
 	}
 	
 	private void handle(DeliveryFailure m) {
@@ -124,7 +114,7 @@ public class RmiService extends Thread {
 			RpcRequest request = m.message.getContentAs(RpcRequest.class, gson);
 			RpcResponse response = new RpcResponse();
 			response.id = request.id;
-			response.error = new RpcError(-32002, "Unreachable");
+			response.error = new RpcError(-32002, "Unreachable", m.message.dests);
 			handle(response);
 		}
 		else if (m.message.contentOfType(RpcResponse.class)) {
@@ -137,10 +127,7 @@ public class RmiService extends Thread {
 	
 	private void handle(Shutdown m) {
 		interrupt();
-	}
-	
-	private String getTargetId(Route dest) {
-		return dest.hops.getFirst().getSchemeSpecificPart();
+		for (RpcHandler handler : handlers.values()) handler.shutdown();
 	}
 	
 	@Override

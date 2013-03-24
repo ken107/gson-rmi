@@ -5,12 +5,15 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.UUID;
 
 import com.google.code.gsonrmi.annotations.RMI;
+import com.google.code.gsonrmi.annotations.Session;
 import com.google.code.gsonrmi.serializer.ExceptionSerializer;
 import com.google.code.gsonrmi.serializer.ParameterSerializer;
 import com.google.code.gsonrmi.transport.Route;
 import com.google.code.gsonrmi.transport.Transport;
+import com.google.code.gsonrmi.transport.rmi.AbstractSession;
 import com.google.code.gsonrmi.transport.rmi.Call;
 import com.google.code.gsonrmi.transport.rmi.RmiService;
 import com.google.code.gsonrmi.transport.tcp.TcpProxy;
@@ -19,22 +22,19 @@ import com.google.gson.GsonBuilder;
 
 public class TestClient {
 	
-	private final Transport t;
 	private final Gson gson;
 	
-	public TestClient(Transport t, Gson gson) {
-		this.t = t;
+	public TestClient(Gson gson) {
 		this.gson = gson;
 	}
 
 	@RMI
-	public void returnValue(Integer value, RpcError error) {
-		System.out.println(value + " " + error);
-		if (error != null && error.code == -32000) error.data.getValue(Exception.class, gson).printStackTrace();
-		t.shutdown();
+	public void returnValue(Integer value, RpcError error, @Session(create=true) AbstractSession session) {
+		System.out.println(session.id + " " + value + " " + error);
+		if (error != null && error.equals(RpcError.INVOCATION_EXCEPTION)) error.data.getValue(Exception.class, gson).printStackTrace();
 	}
 	
-	public static void main(String[] args) throws IOException, URISyntaxException {
+	public static void main(String[] args) throws IOException, URISyntaxException, InterruptedException {
 		Gson gson = new GsonBuilder()
 				.registerTypeAdapter(Exception.class, new ExceptionSerializer())
 				.registerTypeAdapter(Parameter.class, new ParameterSerializer()).create();
@@ -43,12 +43,15 @@ public class TestClient {
 		new TcpProxy(Arrays.asList(new InetSocketAddress(30101)), t, gson).start();
 		new RmiService(t, gson).start();
 		
-		new Call(new Route(new URI("rmi:service")), "register", "anotherObject", new TestClient(t, gson)).send(t);
+		new Call(new Route(new URI("rmi:service")), "register", "anotherObject", new TestClient(gson)).send(t);
 		
-		Route r = new Route(new URI("tcp://localhost:30100"), new URI("rmi:anObject"));
-		new Call(r, "aMethod", "Hello, World!").callback(new Route(new URI("rmi:anotherObject")), "returnValue").send(t);
+		Route r = new Route(new URI("tcp://localhost:30100"), new URI("rmi:anObject#" + UUID.randomUUID()));
+		new Call(r, "aMethod", "Hello, World!").callback(new Route(new URI("rmi:anotherObject#" + UUID.randomUUID())), "returnValue").send(t);
+		
+		Thread.sleep(2000);
 		new Call(r, "shutdown").send(t);
 		
-		//TODO: session
+		Thread.sleep(3000);
+		t.shutdown();
 	}
 }

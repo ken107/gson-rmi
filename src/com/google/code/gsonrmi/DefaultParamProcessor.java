@@ -4,7 +4,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
 import com.google.code.gsonrmi.Invoker.ParamProcessor;
-import com.google.code.gsonrmi.annotations.Context;
 import com.google.code.gsonrmi.annotations.Injected;
 import com.google.code.gsonrmi.annotations.ParamType;
 import com.google.gson.Gson;
@@ -18,14 +17,12 @@ public class DefaultParamProcessor implements ParamProcessor {
 	}
 
 	@Override
-	public Object injectParam(Type paramType, Annotation[] paramAnnotations, Object context) {
-		Context contextAnnotation = findAnnotation(paramAnnotations, Context.class);
-		if (contextAnnotation != null) return context;
+	public Object injectParam(Type paramType, Annotation[] paramAnnotations, Object context) throws ParamValidationException {
 		return null;
 	}
 
 	@Override
-	public Object processParam(Parameter param, Type paramType, Annotation[] paramAnnotations, Object context) {
+	public Object processParam(Parameter param, Type paramType, Annotation[] paramAnnotations, Object context) throws ParamValidationException {
 		if (param == null) return null;
 		ParamType paramTypeAnnotation = findAnnotation(paramAnnotations, ParamType.class);
 		if (paramTypeAnnotation != null) paramType = paramTypeAnnotation.value();
@@ -40,7 +37,7 @@ public class DefaultParamProcessor implements ParamProcessor {
 		return false;
 	}
 	
-	private <T> T findAnnotation(Annotation[] paramAnnotations, Class<T> type) {
+	protected <T> T findAnnotation(Annotation[] paramAnnotations, Class<T> type) {
 		for (Annotation a : paramAnnotations) if (type.isInstance(a)) return type.cast(a);
 		return null;
 	}

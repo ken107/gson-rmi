@@ -67,15 +67,14 @@ public class HttpClient extends Thread {
 					RpcRequest request = m.content.getValue(RpcRequest.class, gson);
 					response = new RpcResponse();
 					response.id = request.id;
-					response.error = new RpcError(-32003, "HTTP server returns " + responseCode + " " + con.getResponseMessage());
-					
+					response.error = new RpcError(HttpError.HTTP_REQUEST_FAILED, responseCode + " " + con.getResponseMessage());
 				}
 			}
 			catch (IOException e) {
 				RpcRequest request = m.content.getValue(RpcRequest.class, gson);
 				response = new RpcResponse();
 				response.id = request.id;
-				response.error = new RpcError(-32004, "Unable to send HTTP request", e);
+				response.error = new RpcError(HttpError.IO_EXCEPTION, e);
 			}
 			t.send(new Message(null, Arrays.asList(m.src), response));
 		}

@@ -16,6 +16,7 @@ public class Call {
 	public final String method;
 	public final Parameter[] params;
 	public Call callback;
+	public long timeSent;
 	
 	public Call(Route target, String method, Object... params) {
 		this(Arrays.asList(target), method, params);

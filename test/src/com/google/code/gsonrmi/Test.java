@@ -7,10 +7,12 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 
 import com.google.code.gsonrmi.annotations.RMI;
+import com.google.code.gsonrmi.annotations.Session;
 import com.google.code.gsonrmi.serializer.ExceptionSerializer;
 import com.google.code.gsonrmi.serializer.ParameterSerializer;
 import com.google.code.gsonrmi.transport.Route;
 import com.google.code.gsonrmi.transport.Transport;
+import com.google.code.gsonrmi.transport.rmi.AbstractSession;
 import com.google.code.gsonrmi.transport.rmi.Call;
 import com.google.code.gsonrmi.transport.rmi.RmiService;
 import com.google.code.gsonrmi.transport.tcp.TcpProxy;
@@ -26,13 +28,15 @@ public class Test {
 	}
 	
 	@RMI
-	public int aMethod(String name) throws Exception {
+	public int aMethod(String name, @Session(create=true) AbstractSession session) throws Exception {
 		//throw new NumberFormatException("Bad");
+		System.out.println(session.id + " " + session.lastAccessed);
 		return name.length();
 	}
 	
 	@RMI
-	public void shutdown() {
+	public void shutdown(@Session AbstractSession session) {
+		System.out.println(session.id + " " + session.lastAccessed);
 		t.shutdown();
 	}
 

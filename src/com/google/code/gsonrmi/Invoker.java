@@ -33,19 +33,22 @@ public class Invoker {
 			response.result = new Parameter(m.invoke(target, processedParams), m.getGenericReturnType());
 		}
 		catch (JsonParseException e) {
-			response.error = new RpcError(-32700, "Parse error");
+			response.error = RpcError.PARSER_ERROR;
 		}
 		catch (InvocationTargetException e) {
-			response.error = new RpcError(-32000, "Invocation exception", e.getCause());
+			response.error = new RpcError(RpcError.INVOCATION_EXCEPTION, e.getCause());
 		}
 		catch (IllegalAccessException e) {
-			response.error = new RpcError(-32601, "Method not accessible");
+			response.error = RpcError.METHOD_NOT_FOUND;
 		}
 		catch (IllegalArgumentException e) {
-			response.error = new RpcError(-32602, "Invalid params");
+			response.error = RpcError.INVALID_PARAMS;
 		}
 		catch (NoSuchMethodException e) {
-			response.error = new RpcError(-32601, "Method not found");
+			response.error = RpcError.METHOD_NOT_FOUND;
+		}
+		catch (ParamValidationException e) {
+			response.error = new RpcError(RpcError.PARAM_VALIDATION_FAILED, e.getMessage());
 		}
 		return response;
 	}
@@ -68,7 +71,7 @@ public class Invoker {
 	
 	public static interface ParamProcessor {
 		boolean isInjectedParam(Annotation[] paramAnnotations);
-		Object injectParam(Type paramType, Annotation[] paramAnnotations, Object context);
-		Object processParam(Parameter param, Type paramType, Annotation[] paramAnnotations, Object context);
+		Object injectParam(Type paramType, Annotation[] paramAnnotations, Object context) throws ParamValidationException;
+		Object processParam(Parameter param, Type paramType, Annotation[] paramAnnotations, Object context) throws ParamValidationException;
 	}
 }

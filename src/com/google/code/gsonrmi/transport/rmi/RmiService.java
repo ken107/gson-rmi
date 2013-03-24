@@ -4,12 +4,11 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import com.google.code.gsonrmi.DefaultParamProcessor;
-import com.google.code.gsonrmi.Invoker;
 import com.google.code.gsonrmi.Parameter;
 import com.google.code.gsonrmi.RpcError;
 import com.google.code.gsonrmi.RpcRequest;
@@ -25,12 +24,13 @@ import com.google.gson.Gson;
 public class RmiService extends Thread {
 
 	public static final String SCHEME = "rmi";
+	public static final int CLEANUP_INTERVAL = 30*1000;
+	public static final int CALL_EXPIRY = 60*1000;
 	
 	private final URI addr;
 	private final BlockingQueue<Message> mq;
 	private final Transport t;
 	private final Gson gson;
-	private final Invoker invoker;
 	private final Map<String, RpcHandler> handlers;
 	private final Map<Integer, Call> pendingCalls;
 	private int idGen;
@@ -40,17 +40,17 @@ public class RmiService extends Thread {
 		mq = new LinkedBlockingQueue<Message>();
 		t = transport;
 		t.register(SCHEME, mq);
+		t.sendEvery(new Message(null, Arrays.asList(new Route(addr)), new PeriodicCleanup()), CLEANUP_INTERVAL, CLEANUP_INTERVAL);
 		gson = deserializer;
-		invoker = new Invoker(new DefaultParamProcessor(gson));
 		handlers = new HashMap<String, RpcHandler>();
-		handlers.put("service", new DefaultRpcHandler(this, invoker));
+		handlers.put("service", new DefaultRpcHandler(this, gson));
 		pendingCalls = new HashMap<Integer, Call>();
 	}
 	
 	@RMI
 	public URI register(String id, Object target) throws URISyntaxException {
 		if (target instanceof RpcHandler) handlers.put(id, (RpcHandler) target);
-		else handlers.put(id, new DefaultRpcHandler(target, invoker));
+		else handlers.put(id, new DefaultRpcHandler(target, gson));
 		return new URI(SCHEME, id, null);
 	}
 	
@@ -60,31 +60,42 @@ public class RmiService extends Thread {
 		else if (m.contentOfType(RpcResponse.class)) handle(m.getContentAs(RpcResponse.class, gson));
 		else if (m.contentOfType(DeliveryFailure.class)) handle(m.getContentAs(DeliveryFailure.class, gson));
 		else if (m.contentOfType(Shutdown.class)) handle(m.getContentAs(Shutdown.class, gson));
+		else if (m.contentOfType(PeriodicCleanup.class)) handle(m.getContentAs(PeriodicCleanup.class, gson));
 		else System.err.println("Unhandled message type: " + m.contentType);
 	}
 	
 	private void handle(Call m) {
-		Integer id = ++idGen;
-		pendingCalls.put(id, m);
+		m.timeSent = System.currentTimeMillis();
+		Integer id = null;
+		if (m.callback != null) {
+			id = ++idGen;
+			pendingCalls.put(id, m);
+		}
 		RpcRequest request = new RpcRequest();
 		request.method = m.method;
 		request.params = m.params;
-		request.id = new Parameter(id);
+		request.id = id != null ? new Parameter(id) : null;
 		t.send(new Message(new Route(addr), m.targets, request));
 	}
 	
 	private void handle(RpcRequest request, Message m) {
+		RpcResponse response;
 		URI targetUri = m.dests.get(0).hops.getFirst();
 		RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
-		if (handler != null) {
-			RpcResponse response = handler.handle(request, targetUri, m.src);
-			if (response != null) t.send(new Message(null, Arrays.asList(m.src), response));
-		}
+		if (handler != null) response = handler.handle(request, targetUri, m.src);
 		else {
-			RpcResponse response = new RpcResponse();
+			response = new RpcResponse();
 			response.id = request.id;
-			response.error = new RpcError(-32001, "Target not found " + targetUri);
-			t.send(new Message(null, Arrays.asList(m.src), response));
+			response.error = new RpcError(RmiError.TARGET_NOT_FOUND, targetUri);
+		}
+		if (response != null) {
+			if (response.id != null) t.send(new Message(null, Arrays.asList(m.src), response));
+			else {
+				if (response.error != null) {
+					System.err.println("Notification failed:  method " + request.method + ", " + response.error);
+					if (response.error.equals(RpcError.INVOCATION_EXCEPTION)) response.error.data.getValue(Exception.class, gson).printStackTrace();
+				}
+			}
 		}
 	}
 	
@@ -93,18 +104,10 @@ public class RmiService extends Thread {
 		Call pendingCall = pendingCalls.get(responseId);
 		if (pendingCall != null) {
 			Call callback = pendingCall.callback;
-			if (callback != null) {
-				URI targetUri = callback.targets.get(0).hops.getFirst();
-				RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
-				if (handler != null) handler.handle(response, callback);
-				else System.err.println("Callback target not found " + targetUri);
-			}
-			else {
-				if (response.error != null) {
-					System.err.println("Unhandled failure response: " + response.error);
-					if (response.error.code == -32000) response.error.data.getValue(Exception.class, gson).printStackTrace();
-				}
-			}
+			URI targetUri = callback.targets.get(0).hops.getFirst();
+			RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
+			if (handler != null) handler.handle(response, callback);
+			else System.err.println("Callback target not found " + targetUri);
 		}
 		else System.err.println("No pending request with id " + responseId);
 	}
@@ -114,7 +117,7 @@ public class RmiService extends Thread {
 			RpcRequest request = m.message.getContentAs(RpcRequest.class, gson);
 			RpcResponse response = new RpcResponse();
 			response.id = request.id;
-			response.error = new RpcError(-32002, "Unreachable", m.message.dests);
+			response.error = new RpcError(RmiError.UNREACHABLE, m.message.dests);
 			handle(response);
 		}
 		else if (m.message.contentOfType(RpcResponse.class)) {
@@ -130,6 +133,14 @@ public class RmiService extends Thread {
 		for (RpcHandler handler : handlers.values()) handler.shutdown();
 	}
 	
+	private void handle(PeriodicCleanup m) {
+		for (Iterator<Call> i=pendingCalls.values().iterator(); i.hasNext(); ) {
+			Call c = i.next();
+			if (System.currentTimeMillis()-c.timeSent > CALL_EXPIRY) i.remove();
+		}
+		for (RpcHandler h : handlers.values()) h.periodicCleanup();
+	}
+	
 	@Override
 	public void run() {
 		try {
@@ -137,5 +148,8 @@ public class RmiService extends Thread {
 		}
 		catch (InterruptedException e) {
 		}
+	}
+	
+	private static class PeriodicCleanup {
 	}
 }

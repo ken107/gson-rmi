@@ -10,5 +10,6 @@ public interface RpcHandler {
 
 	RpcResponse handle(RpcRequest request, URI dest, Route src);
 	void handle(RpcResponse response, Call callback);
+	void periodicCleanup();
 	void shutdown();
 }

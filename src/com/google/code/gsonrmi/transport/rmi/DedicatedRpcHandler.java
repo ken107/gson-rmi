@@ -37,6 +37,7 @@ public class DedicatedRpcHandler extends Thread implements RpcHandler {
 	@Override
 	public void shutdown() {
 		interrupt();
+		handler.shutdown();
 	}
 	
 	@Override
@@ -53,5 +54,10 @@ public class DedicatedRpcHandler extends Thread implements RpcHandler {
 		}
 		catch (InterruptedException e) {
 		}
+	}
+
+	@Override
+	public void periodicCleanup() {
+		handler.periodicCleanup();
 	}
 }

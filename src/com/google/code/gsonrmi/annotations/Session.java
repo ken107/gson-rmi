@@ -8,6 +8,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.PARAMETER)
 @Injected
-public @interface Context {
+public @interface Session {
 
+	boolean create() default false;
 }

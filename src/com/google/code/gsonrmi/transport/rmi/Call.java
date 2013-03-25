@@ -2,7 +2,6 @@ package com.google.code.gsonrmi.transport.rmi;
 
 import java.net.URI;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 
 import com.google.code.gsonrmi.Parameter;
@@ -23,8 +22,7 @@ public class Call {
 	}
 	
 	public Call(List<Route> targets, String method, Object... params) {
-		this.targets = new LinkedList<Route>();
-		for (Route t : targets) this.targets.add(new Route(t));
+		this.targets = targets;
 		this.method = method;
 		this.params = new Parameter[params.length];
 		for (int i=0; i<params.length; i++) this.params[i] = params[i] != null ? new Parameter(params[i]) : null;

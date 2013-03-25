@@ -49,9 +49,10 @@ public class DefaultRpcHandler implements RpcHandler {
 		request.params[request.params.length-2] = response.result;
 		request.params[request.params.length-1] = new Parameter(response.error);
 		
-		RpcResponse r = invoker.doInvoke(request, target, new Context(null, callback.targets.get(0).hops.getFirst().getFragment()));
+		URI targetUri = callback.targets.get(0).hops.getFirst();
+		RpcResponse r = invoker.doInvoke(request, target, new Context(null, targetUri.getFragment()));
 		if (r.error != null) {
-			System.err.println("Invoke response failed:  method " + callback.method + ", " + r.error);
+			System.err.println("Invoke response failed:  " + targetUri + " method " + callback.method + ", " + r.error);
 			if (r.error.equals(RpcError.INVOCATION_EXCEPTION)) r.error.data.getValue(Exception.class, null).printStackTrace();
 		}
 	}

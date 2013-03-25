@@ -136,8 +136,10 @@ public class TcpProxy extends Proxy {
 		
 		@Override
 		public void send(Message m) {
-			for (Route dest : m.dests) if (dest.hops.getFirst().equals(remoteAddr)) dest.hops.removeFirst();
-			out.println(gson.toJson(m));
+			LinkedList<Route> dests = new LinkedList<Route>();
+			for (Route dest : m.dests) dests.add(new Route(dest));
+			for (Route dest : dests) dest.hops.removeFirst();
+			out.println(gson.toJson(new Message(m.src, dests, m.content, m.contentType)));
 		}
 		
 		@Override

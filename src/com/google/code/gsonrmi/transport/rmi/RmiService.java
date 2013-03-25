@@ -92,7 +92,7 @@ public class RmiService extends Thread {
 			if (response.id != null) t.send(new Message(null, Arrays.asList(m.src), response));
 			else {
 				if (response.error != null) {
-					System.err.println("Notification failed:  method " + request.method + ", " + response.error);
+					System.err.println("Notification failed:  " + targetUri + " method " + request.method + ", " + response.error);
 					if (response.error.equals(RpcError.INVOCATION_EXCEPTION)) response.error.data.getValue(Exception.class, gson).printStackTrace();
 				}
 			}

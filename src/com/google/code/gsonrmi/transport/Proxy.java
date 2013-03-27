@@ -30,7 +30,7 @@ public abstract class Proxy extends Thread {
 	protected abstract String getScheme();
 	protected abstract Connection createConnection(String remoteAuthority);
 	
-	protected void addConnection(Connection c) {
+	public void addConnection(Connection c) {
 		mq.add(new Message(null, null, new AddConnection(c)));
 	}
 	
@@ -78,7 +78,7 @@ public abstract class Proxy extends Thread {
 		}
 	}
 	
-	private static class AddConnection {
+	public static class AddConnection {
 		public final Connection con;
 		public AddConnection(Connection c) {
 			con = c;

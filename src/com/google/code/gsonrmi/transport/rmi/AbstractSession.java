@@ -4,4 +4,5 @@ public class AbstractSession {
 
 	public String id;
 	public long lastAccessed;
+	public boolean invalid;
 }

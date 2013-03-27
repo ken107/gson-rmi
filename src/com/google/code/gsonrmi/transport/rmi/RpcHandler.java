@@ -9,7 +9,7 @@ import com.google.code.gsonrmi.transport.Route;
 public interface RpcHandler {
 
 	RpcResponse handle(RpcRequest request, URI dest, Route src);
-	void handle(RpcResponse response, Call callback);
+	void handle(RpcResponse response, Callback callback);
 	void periodicCleanup();
 	void shutdown();
 }

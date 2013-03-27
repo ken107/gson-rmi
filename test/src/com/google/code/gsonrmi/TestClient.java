@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.UUID;
 
+import com.google.code.gsonrmi.Test.MySession;
 import com.google.code.gsonrmi.Test.Person;
 import com.google.code.gsonrmi.Test.Roster;
 import com.google.code.gsonrmi.annotations.RMI;
@@ -64,6 +65,11 @@ public class TestClient {
 		System.out.println(marker + " " + value);
 	}
 	
+	@RMI
+	public void returnWithSpecifiedSession(String marker, Object value, @Session MySession session, RpcError error) {
+		System.out.println(marker + " " + session.person);
+	}
+	
 	public static void main(String[] args) throws IOException, URISyntaxException, InterruptedException {
 		Gson gson = new GsonBuilder()
 				.registerTypeAdapter(Exception.class, new ExceptionSerializer())
@@ -84,7 +90,7 @@ public class TestClient {
 		
 		//normal tests
 		Route to = new Route(new URI("tcp://localhost:30100"), new URI("rmi:test"));
-		Route from = new Route(new URI("rmi:testClient"));
+		URI from = new URI("rmi:testClient");
 		new Call(to, "basic", john.id, john.name, john.birthday, jane, Arrays.asList(jami, jack), roster).callback(from, "returnRoster").send(t);
 		
 		//error tests
@@ -105,12 +111,15 @@ public class TestClient {
 		//session tests
 		Route toSession = new Route(new URI("tcp://localhost:30100"), new URI("rmi:test#" + UUID.randomUUID()));
 		Route toBadSession = new Route(new URI("tcp://localhost:30100"), new URI("rmi:test#" + UUID.randomUUID()));
-		Route fromSession = new Route(new URI("rmi:testClient#" + UUID.randomUUID()));
+		URI fromSession = new URI("rmi:testClient#" + UUID.randomUUID());
+		MySession session = new MySession();
+		session.person = jack;
 		new Call(to, "sessionWithCreate", joey).callback(fromSession, "returnError", "sessionWithCreate-noSessionId").send(t);
 		new Call(to, "sessionWithoutCreate").callback(fromSession, "returnError", "sessionWithoutCreate-noSessionId").send(t);
 		new Call(toSession, "sessionWithCreate", joey).callback(fromSession, "returnWithNewSession", "sessionWithCreate").send(t);
 		new Call(toSession, "sessionWithoutCreate").callback(fromSession, "returnPersonWithExistingSession", "sessionWithoutCreate").send(t);
 		new Call(toBadSession, "sessionWithoutCreate").callback(fromSession, "returnError", "sessionWithoutCreate-badSessionId").send(t);
+		new Call(toSession, "sessionWithoutCreate").callback(from, "returnWithSpecifiedSession", "specifyLocalSession").session(session).send(t);
 		
 		//shutdown
 		Thread.sleep(3000);

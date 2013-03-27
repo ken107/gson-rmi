@@ -30,7 +30,7 @@ public class DedicatedRpcHandler extends Thread implements RpcHandler {
 	}
 
 	@Override
-	public void handle(RpcResponse response, Call callback) {
+	public void handle(RpcResponse response, Callback callback) {
 		mq.add(new Object[] {response, callback});
 	}
 	
@@ -49,7 +49,7 @@ public class DedicatedRpcHandler extends Thread implements RpcHandler {
 					RpcResponse response = handler.handle((RpcRequest) m[0], (URI) m[1], (Route) m[2]);
 					if (response != null) transport.send(new Message(null, Arrays.asList((Route) m[2]), response));
 				}
-				else if (m[0] instanceof RpcResponse) handler.handle((RpcResponse) m[0], (Call) m[1]);
+				else if (m[0] instanceof RpcResponse) handler.handle((RpcResponse) m[0], (Callback) m[1]);
 			}
 		}
 		catch (InterruptedException e) {

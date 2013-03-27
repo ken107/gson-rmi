@@ -42,14 +42,17 @@ public class DefaultRpcHandler implements RpcHandler {
 	}
 
 	@Override
-	public void handle(RpcResponse response, Call callback) {
+	public void handle(RpcResponse response, Callback callback) {
+		if (callback.session != null && callback.session.id != null)
+			sessions.put(callback.session.id, callback.session);
+		
 		RpcRequest request = new RpcRequest();
 		request.method = callback.method;
 		request.params = Arrays.copyOf(callback.params, callback.params.length+2);
 		request.params[request.params.length-2] = response.result;
 		request.params[request.params.length-1] = new Parameter(response.error);
 		
-		URI targetUri = callback.targets.get(0).hops.getFirst();
+		URI targetUri = callback.target;
 		RpcResponse r = invoker.doInvoke(request, target, new Context(null, targetUri.getFragment()));
 		if (r.error != null) {
 			System.err.println("Invoke response failed:  " + targetUri + " method " + callback.method + ", " + r.error);
@@ -65,7 +68,7 @@ public class DefaultRpcHandler implements RpcHandler {
 	public void periodicCleanup() {
 		for (Iterator<AbstractSession> i=sessions.values().iterator(); i.hasNext(); ) {
 			AbstractSession session = i.next();
-			if (System.currentTimeMillis()-session.lastAccessed > SESSION_EXPIRY) i.remove();
+			if (session.invalid || System.currentTimeMillis()-session.lastAccessed > SESSION_EXPIRY) i.remove();
 		}
 	}
 	
@@ -82,6 +85,10 @@ public class DefaultRpcHandler implements RpcHandler {
 			AbstractSession session = null;
 			if (sessionId != null) {
 				session = sessions.get(sessionId);
+				if (session != null && session.invalid) {
+					sessions.remove(sessionId);
+					session = null;
+				}
 				if (session == null && create) {
 					try {
 						if (type instanceof ParameterizedType) type = ((ParameterizedType) type).getRawType();

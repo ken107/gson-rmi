@@ -28,13 +28,14 @@ public class Parameter {
 		this.serializedValue = serializedValue;
 	}
 	
-	public Object getValue(Type type, Gson deserializer) {
+	@SuppressWarnings("unchecked")
+	public <T> T getValue(Type type, Gson deserializer) {
 		if (value == null && serializedValue != null) {
 			value = deserializer.fromJson(serializedValue, type);
 			this.type = type;
 			serializedValue = null;
 		}
-		return value;
+		return (T) value;
 	}
 	
 	@SuppressWarnings("unchecked")

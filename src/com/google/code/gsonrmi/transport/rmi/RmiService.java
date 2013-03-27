@@ -103,8 +103,8 @@ public class RmiService extends Thread {
 		Integer responseId = response.id.getValue(Integer.class, gson);
 		Call pendingCall = pendingCalls.get(responseId);
 		if (pendingCall != null) {
-			Call callback = pendingCall.callback;
-			URI targetUri = callback.targets.get(0).hops.getFirst();
+			Callback callback = pendingCall.callback;
+			URI targetUri = callback.target;
 			RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
 			if (handler != null) handler.handle(response, callback);
 			else System.err.println("Callback target not found " + targetUri);

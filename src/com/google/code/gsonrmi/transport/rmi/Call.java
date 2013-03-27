@@ -1,8 +1,10 @@
 package com.google.code.gsonrmi.transport.rmi;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 import com.google.code.gsonrmi.Parameter;
 import com.google.code.gsonrmi.transport.Message;
@@ -14,7 +16,7 @@ public class Call {
 	public final List<Route> targets;
 	public final String method;
 	public final Parameter[] params;
-	public Call callback;
+	public Callback callback;
 	public long timeSent;
 	
 	public Call(Route target, String method, Object... params) {
@@ -28,12 +30,41 @@ public class Call {
 		for (int i=0; i<params.length; i++) this.params[i] = params[i] != null ? new Parameter(params[i]) : null;
 	}
 	
-	public Call callback(Route target, String method, Object... params) {
-		callback = new Call(Arrays.asList(target), method, params);
+	public Call callback(URI target, String method, Object... params) {
+		callback = new Callback();
+		callback.target = target;
+		callback.method = method;
+		callback.params = new Parameter[params.length];
+		for (int i=0; i<params.length; i++) callback.params[i] = params[i] != null ? new Parameter(params[i]) : null;
 		return this;
 	}
 	
+	public Call session(AbstractSession session) {
+		if (callback == null) throw new RuntimeException("Callback must be set before session");
+		if (session.id == null) session.id = UUID.randomUUID().toString();
+		try {
+			callback.session = session;
+			callback.target = new URI(callback.target.getScheme(), callback.target.getSchemeSpecificPart(), session.id);
+			return this;
+		}
+		catch (URISyntaxException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
 	public void send(Transport t) {
-		t.send(new Message(null, Arrays.asList(new Route(URI.create("rmi:service"))), this));
+		t.send(getMessage());
+	}
+	
+	public void sendAfter(Transport t, long delay) {
+		t.sendAfter(getMessage(), delay);
+	}
+	
+	public void sendEvery(Transport t, long delay, long period) {
+		t.sendEvery(getMessage(), delay, period);
+	}
+	
+	private Message getMessage() {
+		return new Message(null, Arrays.asList(new Route(URI.create("rmi:service"))), this);
 	}
 }

@@ -24,8 +24,6 @@ import com.google.gson.Gson;
 public class RmiService extends Thread {
 
 	public static final String SCHEME = "rmi";
-	public static final int CLEANUP_INTERVAL = 30*1000;
-	public static final int CALL_EXPIRY = 60*1000;
 	
 	private final URI addr;
 	private final BlockingQueue<Message> mq;
@@ -40,11 +38,19 @@ public class RmiService extends Thread {
 		mq = new LinkedBlockingQueue<Message>();
 		t = transport;
 		t.register(SCHEME, mq);
-		t.sendEvery(new Message(null, Arrays.asList(new Route(addr)), new PeriodicCleanup()), CLEANUP_INTERVAL, CLEANUP_INTERVAL);
+		t.sendEvery(new Message(null, Arrays.asList(new Route(addr)), new PeriodicCleanup()), getCleanupInterval(), getCleanupInterval());
 		gson = deserializer;
 		handlers = new HashMap<String, RpcHandler>();
 		handlers.put("service", new DefaultRpcHandler(this, gson));
 		pendingCalls = new HashMap<Integer, Call>();
+	}
+	
+	protected long getCleanupInterval() {
+		return 30*1000;
+	}
+	
+	protected long getCallExpiry() {
+		return 60*1000;
 	}
 	
 	@RMI
@@ -136,7 +142,7 @@ public class RmiService extends Thread {
 	private void handle(PeriodicCleanup m) {
 		for (Iterator<Call> i=pendingCalls.values().iterator(); i.hasNext(); ) {
 			Call c = i.next();
-			if (System.currentTimeMillis()-c.timeSent > CALL_EXPIRY) i.remove();
+			if (System.currentTimeMillis()-c.timeSent > getCallExpiry()) i.remove();
 		}
 		for (RpcHandler h : handlers.values()) h.periodicCleanup();
 	}

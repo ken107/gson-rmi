@@ -24,8 +24,6 @@ import com.google.gson.Gson;
 
 public class DefaultRpcHandler implements RpcHandler {
 	
-	public static final int SESSION_EXPIRY = 30*60*1000;
-	
 	private final Object target;
 	private final Invoker invoker;
 	private final Map<String, AbstractSession> sessions;
@@ -34,6 +32,10 @@ public class DefaultRpcHandler implements RpcHandler {
 		this.target = target;
 		invoker = new Invoker(new CustomParamProcessor(paramDeserializer));
 		sessions = new HashMap<String, AbstractSession>();
+	}
+	
+	protected long getSessionExpiry() {
+		return 30*60*1000;
 	}
 
 	@Override
@@ -66,10 +68,11 @@ public class DefaultRpcHandler implements RpcHandler {
 
 	@Override
 	public void periodicCleanup() {
-		for (Iterator<AbstractSession> i=sessions.values().iterator(); i.hasNext(); ) {
-			AbstractSession session = i.next();
-			if (session.invalid || System.currentTimeMillis()-session.lastAccessed > SESSION_EXPIRY) i.remove();
-		}
+		for (Iterator<AbstractSession> i=sessions.values().iterator(); i.hasNext(); ) if (isInvalid(i.next())) i.remove();
+	}
+	
+	private boolean isInvalid(AbstractSession session) {
+		return session.invalid || System.currentTimeMillis()-session.lastAccessed > getSessionExpiry();
 	}
 	
 	private class Context {
@@ -85,11 +88,12 @@ public class DefaultRpcHandler implements RpcHandler {
 			AbstractSession session = null;
 			if (sessionId != null) {
 				session = sessions.get(sessionId);
-				if (session != null && session.invalid) {
+				if (session != null && isInvalid(session)) {
 					sessions.remove(sessionId);
 					session = null;
 				}
-				if (session == null && create) {
+				if (session == null) {
+					if (create)
 					try {
 						if (type instanceof ParameterizedType) type = ((ParameterizedType) type).getRawType();
 						sessions.put(sessionId, session = (AbstractSession) ((Class<?>) type).newInstance());
@@ -104,6 +108,9 @@ public class DefaultRpcHandler implements RpcHandler {
 					catch (IllegalAccessException e) {
 						e.printStackTrace();
 					}
+				}
+				else {
+					if (create) session = null;
 				}
 			}
 			if (session != null) session.lastAccessed = System.currentTimeMillis();
@@ -123,7 +130,7 @@ public class DefaultRpcHandler implements RpcHandler {
 			if (sessionAnn != null) {
 				ParamType paramTypeAnn = findAnnotation(paramAnnotations, ParamType.class);
 				AbstractSession session = c.getSession(paramTypeAnn != null ? paramTypeAnn.value() : paramType, sessionAnn.create());
-				if (session == null) throw new ParamValidationException("Session required");
+				if (session == null) throw new ParamValidationException("Session not found or could not be created");
 				return session;
 			}
 			Src srcAnn = findAnnotation(paramAnnotations, Src.class);

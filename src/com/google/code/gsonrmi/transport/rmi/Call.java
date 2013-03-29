@@ -17,7 +17,9 @@ public class Call {
 	public final String method;
 	public final Parameter[] params;
 	public Callback callback;
-	public long timeSent;
+	long timeSent;
+	public int expireSec;
+	Integer id;
 	
 	public Call(URI target, String method, Object... params) {
 		this(new Route(target), method, params);
@@ -32,6 +34,15 @@ public class Call {
 		this.method = method;
 		this.params = new Parameter[params.length];
 		for (int i=0; i<params.length; i++) this.params[i] = params[i] != null ? new Parameter(params[i]) : null;
+	}
+	
+	public Call expire(int sec) {
+		expireSec = sec;
+		return this;
+	}
+	
+	public boolean isExpired() {
+		return expireSec > 0 && System.currentTimeMillis()-timeSent > expireSec*1000;
 	}
 	
 	public Call callback(URI target, String method, Object... params) {

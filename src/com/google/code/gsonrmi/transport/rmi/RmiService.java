@@ -35,23 +35,19 @@ public class RmiService extends Thread {
 	private int idGen;
 	
 	public RmiService(Transport transport, Gson deserializer) throws URISyntaxException {
+		this(transport, deserializer, new Options());
+	}
+	
+	public RmiService(Transport transport, Gson deserializer, Options options) throws URISyntaxException {
 		addr = new URI(SCHEME, "service", null);
 		mq = new LinkedBlockingQueue<Message>();
 		t = transport;
 		t.register(SCHEME, mq);
-		t.sendEvery(new Message(null, Arrays.asList(new Route(addr)), new PeriodicCleanup()), getCleanupInterval(), getCleanupInterval());
+		t.sendEvery(new Message(null, Arrays.asList(new Route(addr)), new PeriodicCleanup()), options.cleanupInterval, options.cleanupInterval);
 		gson = deserializer;
 		handlers = new HashMap<String, RpcHandler>();
 		handlers.put("service", new DefaultRpcHandler(this, gson));
 		pendingCalls = new HashMap<Integer, Call>();
-	}
-	
-	protected long getCleanupInterval() {
-		return 30*1000;
-	}
-	
-	protected long getCallExpiry() {
-		return 60*1000;
 	}
 	
 	@RMI
@@ -73,15 +69,15 @@ public class RmiService extends Thread {
 	
 	private void handle(Call m) {
 		m.timeSent = System.currentTimeMillis();
-		Integer id = null;
-		if (m.callback != null) {
-			id = ++idGen;
-			pendingCalls.put(id, m);
+		if (m.callback == null) m.id = null;
+		else {
+			m.id = ++idGen;
+			pendingCalls.put(m.id, m);
 		}
 		RpcRequest request = new RpcRequest();
 		request.method = m.method;
 		request.params = m.params;
-		request.id = id != null ? new Parameter(id) : null;
+		request.id = m.id != null ? new Parameter(m.id) : null;
 		t.send(new Message(m.callback != null ? m.callback.target : new Route(addr), m.targets, request));
 	}
 	
@@ -149,7 +145,15 @@ public class RmiService extends Thread {
 	private void handle(PeriodicCleanup m) {
 		for (Iterator<Call> i=pendingCalls.values().iterator(); i.hasNext(); ) {
 			Call c = i.next();
-			if (System.currentTimeMillis()-c.timeSent > getCallExpiry()) i.remove();
+			if (c.isExpired()) {
+				for (Route dest : c.targets) {
+					RpcResponse response = new RpcResponse();
+					response.id = new Parameter(c.id);
+					response.error = RmiError.RESPONSE_TIMEOUT;
+					handle(response, dest);
+				}
+				i.remove();
+			}
 		}
 		for (RpcHandler h : handlers.values()) h.periodicCleanup();
 	}
@@ -164,5 +168,9 @@ public class RmiService extends Thread {
 	}
 	
 	private static class PeriodicCleanup {
+	}
+	
+	public static class Options {
+		public long cleanupInterval = 30*1000;
 	}
 }

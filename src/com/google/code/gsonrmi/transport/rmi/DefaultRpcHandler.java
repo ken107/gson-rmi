@@ -35,10 +35,6 @@ public class DefaultRpcHandler implements RpcHandler {
 		sessions = new HashMap<String, AbstractSession>();
 	}
 	
-	protected long getSessionExpiry() {
-		return 30*60*1000;
-	}
-
 	@Override
 	public RpcResponse handle(RpcRequest request, Route dest, Route src) {
 		return invoker.doInvoke(request, target, new Context(dest, src));
@@ -71,11 +67,13 @@ public class DefaultRpcHandler implements RpcHandler {
 
 	@Override
 	public void periodicCleanup() {
-		for (Iterator<AbstractSession> i=sessions.values().iterator(); i.hasNext(); ) if (isInvalid(i.next())) i.remove();
-	}
-	
-	private boolean isInvalid(AbstractSession session) {
-		return session.invalid || System.currentTimeMillis()-session.lastAccessed > getSessionExpiry();
+		for (Iterator<AbstractSession> i=sessions.values().iterator(); i.hasNext(); ) {
+			AbstractSession session = i.next();
+			if (session.isInvalid()) {
+				i.remove();
+				session.onRemove();
+			}
+		}
 	}
 	
 	private class Context {
@@ -92,8 +90,9 @@ public class DefaultRpcHandler implements RpcHandler {
 			AbstractSession session = null;
 			if (sessionId != null) {
 				session = sessions.get(sessionId);
-				if (session != null && isInvalid(session)) {
+				if (session != null && session.isInvalid()) {
 					sessions.remove(sessionId);
+					session.onRemove();
 					session = null;
 				}
 				if (session == null) {

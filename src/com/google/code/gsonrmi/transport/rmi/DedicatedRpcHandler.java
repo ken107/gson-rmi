@@ -35,8 +35,7 @@ public class DedicatedRpcHandler extends Thread implements RpcHandler {
 	
 	@Override
 	public void shutdown() {
-		interrupt();
-		handler.shutdown();
+		mq.add(new Object[] {"shutdown"});
 	}
 	
 	@Override
@@ -49,6 +48,11 @@ public class DedicatedRpcHandler extends Thread implements RpcHandler {
 					if (response != null) transport.send(new Message((Route) m[1], Arrays.asList((Route) m[2]), response));
 				}
 				else if (m[0] instanceof RpcResponse) handler.handle((RpcResponse) m[0], (Route) m[1], (Route) m[2], (Callback) m[3]);
+				else if (m[0].equals("shutdown")) {
+					handler.shutdown();
+					break;
+				}
+				else if (m[0].equals("cleanup")) handler.periodicCleanup();
 			}
 		}
 		catch (InterruptedException e) {
@@ -57,6 +61,6 @@ public class DedicatedRpcHandler extends Thread implements RpcHandler {
 
 	@Override
 	public void periodicCleanup() {
-		handler.periodicCleanup();
+		mq.add(new Object[] {"cleanup"});
 	}
 }

@@ -1,6 +1,5 @@
 package com.google.code.gsonrmi.transport.rmi;
 
-import java.net.URI;
 import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -24,14 +23,14 @@ public class DedicatedRpcHandler extends Thread implements RpcHandler {
 	}
 
 	@Override
-	public RpcResponse handle(RpcRequest request, URI dest, Route src) {
+	public RpcResponse handle(RpcRequest request, Route dest, Route src) {
 		mq.add(new Object[] {request, dest, src});
 		return null;
 	}
 
 	@Override
-	public void handle(RpcResponse response, Callback callback) {
-		mq.add(new Object[] {response, callback});
+	public void handle(RpcResponse response, Route dest, Route src, Callback callback) {
+		mq.add(new Object[] {response, dest, src, callback});
 	}
 	
 	@Override
@@ -46,10 +45,10 @@ public class DedicatedRpcHandler extends Thread implements RpcHandler {
 			while (true) {
 				Object[] m = mq.take();
 				if (m[0] instanceof RpcRequest) {
-					RpcResponse response = handler.handle((RpcRequest) m[0], (URI) m[1], (Route) m[2]);
-					if (response != null) transport.send(new Message(null, Arrays.asList((Route) m[2]), response));
+					RpcResponse response = handler.handle((RpcRequest) m[0], (Route) m[1], (Route) m[2]);
+					if (response != null) transport.send(new Message((Route) m[1], Arrays.asList((Route) m[2]), response));
 				}
-				else if (m[0] instanceof RpcResponse) handler.handle((RpcResponse) m[0], (Callback) m[1]);
+				else if (m[0] instanceof RpcResponse) handler.handle((RpcResponse) m[0], (Route) m[1], (Route) m[2], (Callback) m[3]);
 			}
 		}
 		catch (InterruptedException e) {

@@ -76,7 +76,7 @@ public class HttpClient extends Thread {
 				response.id = request.id;
 				response.error = new RpcError(HttpError.IO_EXCEPTION, e);
 			}
-			t.send(new Message(null, Arrays.asList(m.src), response));
+			t.send(new Message(dest, Arrays.asList(m.src), response));
 		}
 	}
 }

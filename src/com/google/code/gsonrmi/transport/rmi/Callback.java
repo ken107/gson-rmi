@@ -1,12 +1,11 @@
 package com.google.code.gsonrmi.transport.rmi;
 
-import java.net.URI;
-
 import com.google.code.gsonrmi.Parameter;
+import com.google.code.gsonrmi.transport.Route;
 
 public class Callback {
 
-	public URI target;
+	public Route target;
 	public String method;
 	public Parameter[] params;
 	public AbstractSession session;

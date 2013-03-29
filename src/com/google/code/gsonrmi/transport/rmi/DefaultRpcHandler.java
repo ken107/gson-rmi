@@ -16,6 +16,7 @@ import com.google.code.gsonrmi.Parameter;
 import com.google.code.gsonrmi.RpcError;
 import com.google.code.gsonrmi.RpcRequest;
 import com.google.code.gsonrmi.RpcResponse;
+import com.google.code.gsonrmi.annotations.Dest;
 import com.google.code.gsonrmi.annotations.ParamType;
 import com.google.code.gsonrmi.annotations.Session;
 import com.google.code.gsonrmi.annotations.Src;
@@ -39,14 +40,16 @@ public class DefaultRpcHandler implements RpcHandler {
 	}
 
 	@Override
-	public RpcResponse handle(RpcRequest request, URI dest, Route src) {
-		return invoker.doInvoke(request, target, new Context(src, dest.getFragment()));
+	public RpcResponse handle(RpcRequest request, Route dest, Route src) {
+		return invoker.doInvoke(request, target, new Context(dest, src));
 	}
 
 	@Override
-	public void handle(RpcResponse response, Callback callback) {
-		if (callback.session != null && callback.session.id != null)
+	public void handle(RpcResponse response, Route dest, Route src, Callback callback) {
+		if (callback.session != null && callback.session.id != null) {
 			sessions.put(callback.session.id, callback.session);
+			callback.session.lastAccessed = System.currentTimeMillis();
+		}
 		
 		RpcRequest request = new RpcRequest();
 		request.method = callback.method;
@@ -54,8 +57,8 @@ public class DefaultRpcHandler implements RpcHandler {
 		request.params[request.params.length-2] = response.result;
 		request.params[request.params.length-1] = new Parameter(response.error);
 		
-		URI targetUri = callback.target;
-		RpcResponse r = invoker.doInvoke(request, target, new Context(null, targetUri.getFragment()));
+		URI targetUri = callback.target.hops.getFirst();
+		RpcResponse r = invoker.doInvoke(request, target, new Context(callback.target, src));
 		if (r.error != null) {
 			System.err.println("Invoke response failed:  " + targetUri + " method " + callback.method + ", " + r.error);
 			if (r.error.equals(RpcError.INVOCATION_EXCEPTION)) r.error.data.getValue(Exception.class, null).printStackTrace();
@@ -76,15 +79,16 @@ public class DefaultRpcHandler implements RpcHandler {
 	}
 	
 	private class Context {
+		public final Route dest;
 		public final Route src;
-		public final String sessionId;
 		
-		public Context(Route src, String sessionId) {
+		public Context(Route dest, Route src) {
+			this.dest = dest;
 			this.src = src;
-			this.sessionId = sessionId;
 		}
 		
 		public AbstractSession getSession(Type type, boolean create) {
+			String sessionId = dest.hops.getFirst().getFragment();
 			AbstractSession session = null;
 			if (sessionId != null) {
 				session = sessions.get(sessionId);
@@ -133,6 +137,8 @@ public class DefaultRpcHandler implements RpcHandler {
 				if (session == null) throw new ParamValidationException("Session not found or could not be created");
 				return session;
 			}
+			Dest destAnn = findAnnotation(paramAnnotations, Dest.class);
+			if (destAnn != null) return c.dest;
 			Src srcAnn = findAnnotation(paramAnnotations, Src.class);
 			if (srcAnn != null) return c.src;
 			return super.injectParam(paramType, paramAnnotations, context);

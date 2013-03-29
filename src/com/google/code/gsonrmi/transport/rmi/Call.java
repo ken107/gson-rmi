@@ -19,6 +19,10 @@ public class Call {
 	public Callback callback;
 	public long timeSent;
 	
+	public Call(URI target, String method, Object... params) {
+		this(new Route(target), method, params);
+	}
+	
 	public Call(Route target, String method, Object... params) {
 		this(Arrays.asList(target), method, params);
 	}
@@ -31,6 +35,10 @@ public class Call {
 	}
 	
 	public Call callback(URI target, String method, Object... params) {
+		return callback(new Route(target), method, params);
+	}
+	
+	public Call callback(Route target, String method, Object... params) {
 		callback = new Callback();
 		callback.target = target;
 		callback.method = method;
@@ -44,7 +52,8 @@ public class Call {
 		if (session.id == null) session.id = UUID.randomUUID().toString();
 		try {
 			callback.session = session;
-			callback.target = new URI(callback.target.getScheme(), callback.target.getSchemeSpecificPart(), session.id);
+			URI targetUri = callback.target.hops.removeFirst();
+			callback.target.hops.addFirst(new URI(targetUri.getScheme(), targetUri.getSchemeSpecificPart(), session.id));
 			return this;
 		}
 		catch (URISyntaxException e) {

@@ -5,6 +5,7 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -62,9 +63,9 @@ public class RmiService extends Thread {
 	
 	private void process(Message m) {
 		if (m.contentOfType(Call.class)) handle(m.getContentAs(Call.class, gson));
-		else if (m.contentOfType(RpcRequest.class)) handle(m.getContentAs(RpcRequest.class, gson), m);
-		else if (m.contentOfType(RpcResponse.class)) handle(m.getContentAs(RpcResponse.class, gson));
-		else if (m.contentOfType(DeliveryFailure.class)) handle(m.getContentAs(DeliveryFailure.class, gson));
+		else if (m.contentOfType(RpcRequest.class)) handle(m.getContentAs(RpcRequest.class, gson), m.dests, m.src);
+		else if (m.contentOfType(RpcResponse.class)) handle(m.getContentAs(RpcResponse.class, gson), m.src);
+		else if (m.contentOfType(DeliveryFailure.class)) handle(m.getContentAs(DeliveryFailure.class, gson), m.src);
 		else if (m.contentOfType(Shutdown.class)) handle(m.getContentAs(Shutdown.class, gson));
 		else if (m.contentOfType(PeriodicCleanup.class)) handle(m.getContentAs(PeriodicCleanup.class, gson));
 		else System.err.println("Unhandled message type: " + m.contentType);
@@ -81,21 +82,22 @@ public class RmiService extends Thread {
 		request.method = m.method;
 		request.params = m.params;
 		request.id = id != null ? new Parameter(id) : null;
-		t.send(new Message(new Route(addr), m.targets, request));
+		t.send(new Message(m.callback != null ? m.callback.target : new Route(addr), m.targets, request));
 	}
 	
-	private void handle(RpcRequest request, Message m) {
+	private void handle(RpcRequest request, List<Route> dests, Route src) {
+		for (Route dest : dests) {
 		RpcResponse response;
-		URI targetUri = m.dests.get(0).hops.getFirst();
+		URI targetUri = dest.hops.getFirst();
 		RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
-		if (handler != null) response = handler.handle(request, targetUri, m.src);
+		if (handler != null) response = handler.handle(request, dest, src);
 		else {
 			response = new RpcResponse();
 			response.id = request.id;
 			response.error = new RpcError(RmiError.TARGET_NOT_FOUND, targetUri);
 		}
 		if (response != null) {
-			if (response.id != null) t.send(new Message(null, Arrays.asList(m.src), response));
+			if (response.id != null) t.send(new Message(dest, Arrays.asList(src), response));
 			else {
 				if (response.error != null) {
 					System.err.println("Notification failed:  " + targetUri + " method " + request.method + ", " + response.error);
@@ -103,28 +105,33 @@ public class RmiService extends Thread {
 				}
 			}
 		}
+		}
 	}
 	
-	private void handle(RpcResponse response) {
+	private void handle(RpcResponse response, Route src) {
 		Integer responseId = response.id.getValue(Integer.class, gson);
 		Call pendingCall = pendingCalls.get(responseId);
 		if (pendingCall != null) {
 			Callback callback = pendingCall.callback;
-			URI targetUri = callback.target;
+			URI targetUri = callback.target.hops.getFirst();
 			RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
-			if (handler != null) handler.handle(response, callback);
+			if (handler != null) handler.handle(response, callback.target, src, callback);
 			else System.err.println("Callback target not found " + targetUri);
 		}
 		else System.err.println("No pending request with id " + responseId);
 	}
 	
-	private void handle(DeliveryFailure m) {
+	private void handle(DeliveryFailure m, Route src) {
 		if (m.message.contentOfType(RpcRequest.class)) {
 			RpcRequest request = m.message.getContentAs(RpcRequest.class, gson);
 			RpcResponse response = new RpcResponse();
 			response.id = request.id;
-			response.error = new RpcError(RmiError.UNREACHABLE, m.message.dests);
-			handle(response);
+			response.error = RmiError.UNREACHABLE;
+			for (Route dest : m.message.dests) {
+				Route fullSrc = new Route(src);
+				fullSrc.hops.addAll(dest.hops);
+				handle(response, fullSrc);
+			}
 		}
 		else if (m.message.contentOfType(RpcResponse.class)) {
 			RpcResponse response = m.message.getContentAs(RpcResponse.class, gson);

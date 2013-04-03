@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import com.google.code.gsonrmi.Parameter;
 import com.google.code.gsonrmi.transport.Transport.DeliveryFailure;
 import com.google.code.gsonrmi.transport.Transport.Shutdown;
 import com.google.gson.Gson;
@@ -90,5 +91,21 @@ public abstract class Proxy extends Thread {
 		boolean isAlive();
 		void send(Message m);
 		void shutdown();
+	}
+	
+	/**
+	 * Termination proxies should not forward this message. Sender of this message can
+	 * rely on DeliveryFailure to know if the destinations are no longer reachable
+	 */
+	public static class CheckConnection {
+		public Parameter data;
+	}
+	
+	/**
+	 * Proxies handling short-lived connections must save this message and send
+	 * DeliveryFailure when the connection closes
+	 */
+	public static class OnConnectionClosed {
+		public Parameter data;
 	}
 }

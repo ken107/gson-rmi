@@ -16,6 +16,7 @@ import com.google.code.gsonrmi.RpcRequest;
 import com.google.code.gsonrmi.RpcResponse;
 import com.google.code.gsonrmi.annotations.RMI;
 import com.google.code.gsonrmi.transport.Message;
+import com.google.code.gsonrmi.transport.Proxy;
 import com.google.code.gsonrmi.transport.Route;
 import com.google.code.gsonrmi.transport.Transport;
 import com.google.code.gsonrmi.transport.Transport.DeliveryFailure;
@@ -60,25 +61,50 @@ public class RmiService extends Thread {
 	private void process(Message m) {
 		if (m.contentOfType(Call.class)) handle(m.getContentAs(Call.class, gson));
 		else if (m.contentOfType(RpcRequest.class)) handle(m.getContentAs(RpcRequest.class, gson), m.dests, m.src);
-		else if (m.contentOfType(RpcResponse.class)) handle(m.getContentAs(RpcResponse.class, gson), m.src);
-		else if (m.contentOfType(DeliveryFailure.class)) handle(m.getContentAs(DeliveryFailure.class, gson), m.src);
+		else if (m.contentOfType(RpcResponse.class)) handle(m.getContentAs(RpcResponse.class, gson), m.dests.get(0), Arrays.asList(m.src));
+		else if (m.contentOfType(DeliveryFailure.class)) handle(m.getContentAs(DeliveryFailure.class, gson), m.dests.get(0), m.src);
 		else if (m.contentOfType(Shutdown.class)) handle(m.getContentAs(Shutdown.class, gson));
 		else if (m.contentOfType(PeriodicCleanup.class)) handle(m.getContentAs(PeriodicCleanup.class, gson));
+		else if (m.contentOfType(Proxy.CheckConnection.class));
+		else if (m.contentOfType(Proxy.OnConnectionClosed.class));
 		else System.err.println("Unhandled message type: " + m.contentType);
 	}
 	
 	private void handle(Call m) {
 		m.timeSent = System.currentTimeMillis();
-		if (m.callback == null) m.id = null;
-		else {
-			m.id = ++idGen;
-			pendingCalls.put(m.id, m);
+		if ("_onConnectionClosed".equals(m.method)) {
+			if (m.params.length != 0) System.err.println("WARN: _onConnectionClosed accepts no params");
+			if (m.callback != null) {
+				Proxy.OnConnectionClosed request = new Proxy.OnConnectionClosed();
+				Parameter[] data = Arrays.copyOf(m.callback.params, m.callback.params.length+1);
+				data[data.length-1] = new Parameter(m.callback.method);
+				request.data = new Parameter(data);
+				t.send(new Message(m.callback.target, m.targets, request));
+			}
+			else System.err.println("_onConnectionClosed requires a callback");
 		}
-		RpcRequest request = new RpcRequest();
-		request.method = m.method;
-		request.params = m.params;
-		request.id = m.id != null ? new Parameter(m.id) : null;
-		t.send(new Message(m.callback != null ? m.callback.target : new Route(addr), m.targets, request));
+		else {
+			Integer id = null;
+			if (m.callback != null) {
+				id = ++idGen;
+				pendingCalls.put(id, m);
+			}
+			if ("_checkConnection".equals(m.method)) {
+				if (m.callback != null) {
+					Proxy.CheckConnection request = new Proxy.CheckConnection();
+					request.data = new Parameter(id);
+					t.send(new Message(m.callback.target, m.targets, request));
+				}
+				else System.err.println("_checkConnection requires a callback");
+			}
+			else {
+				RpcRequest request = new RpcRequest();
+				request.method = m.method;
+				request.params = m.params;
+				request.id = id != null ? new Parameter(id) : null;
+				t.send(new Message(m.callback != null ? m.callback.target : new Route(addr), m.targets, request));
+			}
+		}
 	}
 	
 	private void handle(RpcRequest request, List<Route> dests, Route src) {
@@ -104,35 +130,46 @@ public class RmiService extends Thread {
 		}
 	}
 	
-	private void handle(RpcResponse response, Route src) {
+	private void handle(RpcResponse response, Route dest, List<Route> srcs) {
 		Integer responseId = response.id.getValue(Integer.class, gson);
 		Call pendingCall = pendingCalls.get(responseId);
-		if (pendingCall != null) {
-			Callback callback = pendingCall.callback;
-			URI targetUri = callback.target.hops.getFirst();
-			RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
-			if (handler != null) handler.handle(response, callback.target, src, callback);
-			else System.err.println("Callback target not found " + targetUri);
-		}
+		if (pendingCall != null) invokeCallback(pendingCall.callback, response, dest, srcs);
 		else System.err.println("No pending request with id " + responseId);
 	}
 	
-	private void handle(DeliveryFailure m, Route src) {
+	private void handle(DeliveryFailure m, Route dest, Route src) {
 		if (m.message.contentOfType(RpcRequest.class)) {
 			RpcRequest request = m.message.getContentAs(RpcRequest.class, gson);
 			RpcResponse response = new RpcResponse();
 			response.id = request.id;
 			response.error = RmiError.UNREACHABLE;
-			for (Route dest : m.message.dests) {
-				Route fullSrc = new Route(src);
-				fullSrc.hops.addAll(dest.hops);
-				handle(response, fullSrc);
-			}
+			prependToEach(m.message.dests, src);
+			handle(response, dest, m.message.dests);
 		}
 		else if (m.message.contentOfType(RpcResponse.class)) {
 			RpcResponse response = m.message.getContentAs(RpcResponse.class, gson);
 			Integer responseId = response.id.getValue(Integer.class, gson);
 			System.err.println("Delivery failed for response with id " + responseId);
+		}
+		else if (m.message.contentOfType(Proxy.CheckConnection.class)) {
+			Proxy.CheckConnection request = m.message.getContentAs(Proxy.CheckConnection.class, gson);
+			RpcResponse response = new RpcResponse();
+			response.id = request.data;
+			response.error = RmiError.UNREACHABLE;
+			prependToEach(m.message.dests, src);
+			handle(response, dest, m.message.dests);
+		}
+		else if (m.message.contentOfType(Proxy.OnConnectionClosed.class)) {
+			Proxy.OnConnectionClosed request = m.message.getContentAs(Proxy.OnConnectionClosed.class, gson);
+			Callback callback = new Callback();
+			callback.target = dest;
+			Parameter[] data = request.data.getValue(Parameter[].class, gson);
+			callback.method = data[data.length-1].getValue(String.class, gson);
+			callback.params = Arrays.copyOfRange(data, 0, data.length-1);
+			RpcResponse response = new RpcResponse();
+			response.error = RmiError.UNREACHABLE;
+			prependToEach(m.message.dests, src);
+			invokeCallback(callback, response, dest, m.message.dests);
 		}
 		else System.err.println("Unexpected delivery failure of " + m.message.contentType);
 	}
@@ -143,19 +180,19 @@ public class RmiService extends Thread {
 	}
 	
 	private void handle(PeriodicCleanup m) {
-		for (Iterator<Call> i=pendingCalls.values().iterator(); i.hasNext(); ) {
-			Call c = i.next();
-			if (c.isExpired()) {
-				for (Route dest : c.targets) {
-					RpcResponse response = new RpcResponse();
-					response.id = new Parameter(c.id);
-					response.error = RmiError.RESPONSE_TIMEOUT;
-					handle(response, dest);
-				}
-				i.remove();
-			}
-		}
+		for (Iterator<Call> i=pendingCalls.values().iterator(); i.hasNext(); ) if (i.next().isExpired()) i.remove();
 		for (RpcHandler h : handlers.values()) h.periodicCleanup();
+	}
+	
+	private void prependToEach(List<Route> dests, Route src) {
+		for (Route dest : dests) for (Iterator<URI> i=src.hops.descendingIterator(); i.hasNext(); ) dest.hops.addFirst(i.next());
+	}
+	
+	private void invokeCallback(Callback callback, RpcResponse response, Route dest, List<Route> srcs) {
+		URI targetUri = dest.hops.getFirst();
+		RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
+		if (handler != null) for (Route src : srcs) handler.handle(response, dest, src, callback);
+		else System.err.println("Callback target not found " + targetUri);
 	}
 	
 	@Override

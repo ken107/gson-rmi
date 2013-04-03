@@ -3,6 +3,7 @@ package com.google.code.gsonrmi.transport.rmi;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,8 +19,8 @@ public class Call {
 	public final Parameter[] params;
 	public Callback callback;
 	long timeSent;
-	public int expireSec;
-	Integer id;
+	public static int defaultExpireSec = 60;
+	public int expireSec = defaultExpireSec;
 	
 	public Call(URI target, String method, Object... params) {
 		this(new Route(target), method, params);
@@ -30,7 +31,8 @@ public class Call {
 	}
 	
 	public Call(List<Route> targets, String method, Object... params) {
-		this.targets = targets;
+		this.targets = new LinkedList<Route>();
+		for (Route target : targets) this.targets.add(new Route(target));
 		this.method = method;
 		this.params = new Parameter[params.length];
 		for (int i=0; i<params.length; i++) this.params[i] = params[i] != null ? new Parameter(params[i]) : null;
@@ -51,7 +53,7 @@ public class Call {
 	
 	public Call callback(Route target, String method, Object... params) {
 		callback = new Callback();
-		callback.target = target;
+		callback.target = new Route(target);
 		callback.method = method;
 		callback.params = new Parameter[params.length];
 		for (int i=0; i<params.length; i++) callback.params[i] = params[i] != null ? new Parameter(params[i]) : null;

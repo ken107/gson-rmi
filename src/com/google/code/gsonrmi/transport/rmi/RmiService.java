@@ -7,8 +7,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 import com.google.code.gsonrmi.Parameter;
 import com.google.code.gsonrmi.RpcError;
@@ -16,6 +14,7 @@ import com.google.code.gsonrmi.RpcRequest;
 import com.google.code.gsonrmi.RpcResponse;
 import com.google.code.gsonrmi.annotations.RMI;
 import com.google.code.gsonrmi.transport.Message;
+import com.google.code.gsonrmi.transport.MessageProcessor;
 import com.google.code.gsonrmi.transport.Proxy;
 import com.google.code.gsonrmi.transport.Route;
 import com.google.code.gsonrmi.transport.Transport;
@@ -23,12 +22,11 @@ import com.google.code.gsonrmi.transport.Transport.DeliveryFailure;
 import com.google.code.gsonrmi.transport.Transport.Shutdown;
 import com.google.gson.Gson;
 
-public class RmiService extends Thread {
+public class RmiService extends MessageProcessor {
 
 	public static final String SCHEME = "rmi";
 	
 	private final URI addr;
-	private final BlockingQueue<Message> mq;
 	private final Transport t;
 	private final Gson gson;
 	private final Map<String, RpcHandler> handlers;
@@ -41,7 +39,6 @@ public class RmiService extends Thread {
 	
 	public RmiService(Transport transport, Gson deserializer, Options options) throws URISyntaxException {
 		addr = new URI(SCHEME, "service", null);
-		mq = new LinkedBlockingQueue<Message>();
 		t = transport;
 		t.register(SCHEME, mq);
 		t.sendEvery(new Message(null, Arrays.asList(new Route(addr)), new PeriodicCleanup()), options.cleanupInterval, options.cleanupInterval);
@@ -58,7 +55,8 @@ public class RmiService extends Thread {
 		return new URI(SCHEME, id, null);
 	}
 	
-	private void process(Message m) {
+	@Override
+	protected void process(Message m) {
 		if (m.contentOfType(Call.class)) handle(m.getContentAs(Call.class, gson));
 		else if (m.contentOfType(RpcRequest.class)) handle(m.getContentAs(RpcRequest.class, gson), m.dests, m.src);
 		else if (m.contentOfType(RpcResponse.class)) handle(m.getContentAs(RpcResponse.class, gson), m.dests.get(0), Arrays.asList(m.src));
@@ -175,7 +173,6 @@ public class RmiService extends Thread {
 	}
 	
 	private void handle(Shutdown m) {
-		interrupt();
 		for (RpcHandler handler : handlers.values()) handler.shutdown();
 	}
 	
@@ -193,15 +190,6 @@ public class RmiService extends Thread {
 		RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
 		if (handler != null) for (Route src : srcs) handler.handle(response, dest, src, callback);
 		else System.err.println("Callback target not found " + targetUri);
-	}
-	
-	@Override
-	public void run() {
-		try {
-			while (true) process(mq.take());
-		}
-		catch (InterruptedException e) {
-		}
 	}
 	
 	private static class PeriodicCleanup {

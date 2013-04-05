@@ -5,49 +5,39 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Arrays;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ExecutorService;
 
 import com.google.code.gsonrmi.RpcError;
 import com.google.code.gsonrmi.RpcRequest;
 import com.google.code.gsonrmi.RpcResponse;
 import com.google.code.gsonrmi.transport.Message;
+import com.google.code.gsonrmi.transport.MessageProcessor;
 import com.google.code.gsonrmi.transport.Route;
 import com.google.code.gsonrmi.transport.Transport;
 import com.google.code.gsonrmi.transport.Transport.Shutdown;
 import com.google.gson.Gson;
 
-public class HttpClient extends Thread {
+public class HttpClient extends MessageProcessor {
 
 	private final Transport t;
-	private final BlockingQueue<Message> mq;
 	private final Gson gson;
 	private final Executor exec;
 	
 	public HttpClient(Transport transport, Gson serializer, Executor executor) {
 		t = transport;
-		mq = new LinkedBlockingQueue<Message>();
 		gson = serializer;
 		exec = executor;
 	}
 	
 	@Override
-	public void run() {
-		try {
-			while (true) process(mq.take());
-		}
-		catch (InterruptedException e) {
-		}
-	}
-
 	protected void process(Message m) {
 		if (m.contentOfType(Shutdown.class)) handle(m.getContentAs(Shutdown.class, gson));
 		else exec.execute(new Task(m));
 	}
 
 	private void handle(Shutdown m) {
-		interrupt();
+		if (exec instanceof ExecutorService) ((ExecutorService) exec).shutdown();
 	}
 
 	private class Task implements Runnable {

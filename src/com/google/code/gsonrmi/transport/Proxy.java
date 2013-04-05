@@ -5,23 +5,19 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 import com.google.code.gsonrmi.Parameter;
 import com.google.code.gsonrmi.transport.Transport.DeliveryFailure;
 import com.google.code.gsonrmi.transport.Transport.Shutdown;
 import com.google.gson.Gson;
 
-public abstract class Proxy extends Thread {
+public abstract class Proxy extends MessageProcessor {
 
-	private final BlockingQueue<Message> mq;
 	protected final Transport transport;
 	protected final Gson gson;
 	private final Map<String, Connection> cons;
 	
 	protected Proxy(Transport t, Gson serializer) {
-		mq = new LinkedBlockingQueue<Message>();
 		transport = t;
 		transport.register(getScheme(), mq);
 		gson = serializer;
@@ -36,14 +32,6 @@ public abstract class Proxy extends Thread {
 	}
 	
 	@Override
-	public void run() {
-		try {
-			while (true) process(mq.take());
-		}
-		catch (InterruptedException e) {
-		}
-	}
-	
 	protected void process(Message m) {
 		if (m.contentOfType(Shutdown.class)) handle(m.getContentAs(Shutdown.class, gson));
 		else if (m.contentOfType(AddConnection.class)) handle(m.getContentAs(AddConnection.class, gson));
@@ -51,7 +39,6 @@ public abstract class Proxy extends Thread {
 	}
 	
 	protected void handle(Shutdown m) {
-		interrupt();
 		for (Connection c : cons.values()) c.shutdown();
 	}
 	

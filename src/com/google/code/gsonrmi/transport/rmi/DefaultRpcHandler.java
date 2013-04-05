@@ -3,7 +3,6 @@ package com.google.code.gsonrmi.transport.rmi;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.net.URI;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -42,21 +41,23 @@ public class DefaultRpcHandler implements RpcHandler {
 
 	@Override
 	public void handle(RpcResponse response, Route dest, Route src, Callback callback) {
-		if (callback.session != null && callback.session.id != null) {
+		if (callback.session != null) {
+			if (callback.session.id != null) {
 			sessions.put(callback.session.id, callback.session);
 			callback.session.lastAccessed = System.currentTimeMillis();
+			}
+			else new RuntimeException("Session id is null").printStackTrace();
 		}
 		
 		RpcRequest request = new RpcRequest();
 		request.method = callback.method;
 		request.params = Arrays.copyOf(callback.params, callback.params.length+2);
 		request.params[request.params.length-2] = response.result;
-		request.params[request.params.length-1] = new Parameter(response.error);
+		request.params[request.params.length-1] = response.error != null ? new Parameter(response.error) : null;
 		
-		URI targetUri = callback.target.hops.getFirst();
-		RpcResponse r = invoker.doInvoke(request, target, new Context(callback.target, src));
+		RpcResponse r = invoker.doInvoke(request, target, new Context(dest, src));
 		if (r.error != null) {
-			System.err.println("Invoke response failed:  " + targetUri + " method " + callback.method + ", " + r.error);
+			System.err.println("Invoke response failed:  " + dest.hops.getFirst() + " method " + callback.method + ", " + r.error);
 			if (r.error.equals(RpcError.INVOCATION_EXCEPTION)) r.error.data.getValue(Exception.class, null).printStackTrace();
 		}
 	}
@@ -76,7 +77,41 @@ public class DefaultRpcHandler implements RpcHandler {
 		}
 	}
 	
-	private class Context {
+	private AbstractSession getSession(String sessionId, Type type, boolean create) {
+		AbstractSession session = null;
+		if (sessionId != null) {
+			session = sessions.get(sessionId);
+			if (session != null && session.isInvalid()) {
+				sessions.remove(sessionId);
+				session.onRemove();
+				session = null;
+			}
+			if (session == null) {
+				if (create)
+				try {
+					if (type instanceof ParameterizedType) type = ((ParameterizedType) type).getRawType();
+					sessions.put(sessionId, session = (AbstractSession) ((Class<?>) type).newInstance());
+					session.id = sessionId;
+				}
+				catch (ClassCastException e) {
+					e.printStackTrace();
+				}
+				catch (InstantiationException e) {
+					e.printStackTrace();
+				}
+				catch (IllegalAccessException e) {
+					e.printStackTrace();
+				}
+			}
+			else {
+				if (create) session = null;
+			}
+		}
+		if (session != null) session.lastAccessed = System.currentTimeMillis();
+		return session;
+	}
+	
+	private static class Context {
 		public final Route dest;
 		public final Route src;
 		
@@ -84,44 +119,9 @@ public class DefaultRpcHandler implements RpcHandler {
 			this.dest = dest;
 			this.src = src;
 		}
-		
-		public AbstractSession getSession(Type type, boolean create) {
-			String sessionId = dest.hops.getFirst().getFragment();
-			AbstractSession session = null;
-			if (sessionId != null) {
-				session = sessions.get(sessionId);
-				if (session != null && session.isInvalid()) {
-					sessions.remove(sessionId);
-					session.onRemove();
-					session = null;
-				}
-				if (session == null) {
-					if (create)
-					try {
-						if (type instanceof ParameterizedType) type = ((ParameterizedType) type).getRawType();
-						sessions.put(sessionId, session = (AbstractSession) ((Class<?>) type).newInstance());
-						session.id = sessionId;
-					}
-					catch (ClassCastException e) {
-						e.printStackTrace();
-					}
-					catch (InstantiationException e) {
-						e.printStackTrace();
-					}
-					catch (IllegalAccessException e) {
-						e.printStackTrace();
-					}
-				}
-				else {
-					if (create) session = null;
-				}
-			}
-			if (session != null) session.lastAccessed = System.currentTimeMillis();
-			return session;
-		}
 	}
 	
-	private static class CustomParamProcessor extends DefaultParamProcessor {
+	private class CustomParamProcessor extends DefaultParamProcessor {
 		public CustomParamProcessor(Gson paramDeserializer) {
 			super(paramDeserializer);
 		}
@@ -132,7 +132,7 @@ public class DefaultRpcHandler implements RpcHandler {
 			Session sessionAnn = findAnnotation(paramAnnotations, Session.class);
 			if (sessionAnn != null) {
 				ParamType paramTypeAnn = findAnnotation(paramAnnotations, ParamType.class);
-				AbstractSession session = c.getSession(paramTypeAnn != null ? paramTypeAnn.value() : paramType, sessionAnn.create());
+				AbstractSession session = getSession(c.dest.hops.getFirst().getFragment(), paramTypeAnn != null ? paramTypeAnn.value() : paramType, sessionAnn.create());
 				if (session == null) throw new ParamValidationException("Session not found or could not be created");
 				return session;
 			}

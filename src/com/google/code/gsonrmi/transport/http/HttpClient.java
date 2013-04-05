@@ -6,6 +6,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executor;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import com.google.code.gsonrmi.RpcError;
@@ -22,11 +23,13 @@ public class HttpClient extends Thread {
 	private final Transport t;
 	private final BlockingQueue<Message> mq;
 	private final Gson gson;
+	private final Executor exec;
 	
-	public HttpClient(Transport transport, Gson serializer) {
+	public HttpClient(Transport transport, Gson serializer, Executor executor) {
 		t = transport;
 		mq = new LinkedBlockingQueue<Message>();
 		gson = serializer;
+		exec = executor;
 	}
 	
 	@Override
@@ -40,14 +43,22 @@ public class HttpClient extends Thread {
 
 	protected void process(Message m) {
 		if (m.contentOfType(Shutdown.class)) handle(m.getContentAs(Shutdown.class, gson));
-		else handle(m);
+		else exec.execute(new Task(m));
 	}
 
 	private void handle(Shutdown m) {
 		interrupt();
 	}
 
-	private void handle(Message m) {
+	private class Task implements Runnable {
+		private Message m;
+		
+		public Task(Message message) {
+			m = message;
+		}
+		
+		@Override
+		public void run() {
 		for (Route dest : m.dests) if (!dest.hops.isEmpty()) {
 			RpcResponse response;
 			try {
@@ -77,6 +88,7 @@ public class HttpClient extends Thread {
 				response.error = new RpcError(HttpError.IO_EXCEPTION, e);
 			}
 			t.send(new Message(dest, Arrays.asList(m.src), response));
+		}
 		}
 	}
 }

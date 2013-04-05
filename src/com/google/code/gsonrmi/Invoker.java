@@ -30,7 +30,8 @@ public class Invoker {
 				if (paramProcessor.isInjectedParam(paramAnnotations[i])) processedParams[i] = paramProcessor.injectParam(paramTypes[i], paramAnnotations[i], context);
 				else processedParams[i] = paramProcessor.processParam(request.params[j++], paramTypes[i], paramAnnotations[i], context);
 			}
-			response.result = new Parameter(m.invoke(target, processedParams));
+			Object returnValue = m.invoke(target, processedParams);
+			response.result = returnValue != null ? new Parameter(returnValue) : null;
 		}
 		catch (JsonParseException e) {
 			response.error = RpcError.PARSER_ERROR;

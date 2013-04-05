@@ -22,10 +22,6 @@ public class Call {
 	public static int defaultExpireSec = 60;
 	public int expireSec = defaultExpireSec;
 	
-	public Call(URI target, String method, Object... params) {
-		this(new Route(target), method, params);
-	}
-	
 	public Call(Route target, String method, Object... params) {
 		this(Arrays.asList(target), method, params);
 	}
@@ -53,7 +49,7 @@ public class Call {
 	
 	public Call callback(Route target, String method, Object... params) {
 		callback = new Callback();
-		callback.target = new Route(target);
+		callback.target = target;
 		callback.method = method;
 		callback.params = new Parameter[params.length];
 		for (int i=0; i<params.length; i++) callback.params[i] = params[i] != null ? new Parameter(params[i]) : null;

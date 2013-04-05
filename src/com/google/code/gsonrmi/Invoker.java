@@ -20,7 +20,8 @@ public class Invoker {
 		RpcResponse response = new RpcResponse();
 		response.id = request.id;
 		try {
-			Method m = findMethod(target, request.method, request.params);
+			Parameter[] params = request.params != null ? request.params : new Parameter[0];
+			Method m = findMethod(target, request.method, params);
 			if (m == null) throw new NoSuchMethodException(request.method);
 			
 			Type[] paramTypes = m.getGenericParameterTypes();
@@ -28,7 +29,7 @@ public class Invoker {
 			Object[] processedParams = new Object[paramTypes.length];
 			for (int i=0, j=0; i<processedParams.length; i++) {
 				if (paramProcessor.isInjectedParam(paramAnnotations[i])) processedParams[i] = paramProcessor.injectParam(paramTypes[i], paramAnnotations[i], context);
-				else processedParams[i] = paramProcessor.processParam(request.params[j++], paramTypes[i], paramAnnotations[i], context);
+				else processedParams[i] = paramProcessor.processParam(params[j++], paramTypes[i], paramAnnotations[i], context);
 			}
 			Object returnValue = m.invoke(target, processedParams);
 			response.result = returnValue != null ? new Parameter(returnValue) : null;

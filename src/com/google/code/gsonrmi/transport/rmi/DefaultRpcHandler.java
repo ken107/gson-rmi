@@ -133,7 +133,7 @@ public class DefaultRpcHandler implements RpcHandler {
 			if (sessionAnn != null) {
 				ParamType paramTypeAnn = findAnnotation(paramAnnotations, ParamType.class);
 				AbstractSession session = getSession(c.dest.hops[0].getFragment(), paramTypeAnn != null ? paramTypeAnn.value() : paramType, sessionAnn.create());
-				if (session == null) throw new ParamValidationException("Session not found or could not be created");
+				if (session == null) throw new InvalidSessionException("Session not found or could not be created");
 				return session;
 			}
 			Dest destAnn = findAnnotation(paramAnnotations, Dest.class);

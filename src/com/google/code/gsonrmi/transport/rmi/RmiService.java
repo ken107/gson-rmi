@@ -14,12 +14,12 @@ import com.google.code.gsonrmi.RpcError;
 import com.google.code.gsonrmi.RpcRequest;
 import com.google.code.gsonrmi.RpcResponse;
 import com.google.code.gsonrmi.annotations.RMI;
+import com.google.code.gsonrmi.transport.DeliveryFailure;
 import com.google.code.gsonrmi.transport.Message;
 import com.google.code.gsonrmi.transport.MessageProcessor;
 import com.google.code.gsonrmi.transport.Proxy;
 import com.google.code.gsonrmi.transport.Route;
 import com.google.code.gsonrmi.transport.Transport;
-import com.google.code.gsonrmi.transport.Transport.DeliveryFailure;
 import com.google.code.gsonrmi.transport.Transport.Shutdown;
 import com.google.gson.Gson;
 

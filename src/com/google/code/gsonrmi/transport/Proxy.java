@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.code.gsonrmi.Parameter;
-import com.google.code.gsonrmi.transport.Transport.DeliveryFailure;
 import com.google.code.gsonrmi.transport.Transport.Shutdown;
 import com.google.gson.Gson;
 

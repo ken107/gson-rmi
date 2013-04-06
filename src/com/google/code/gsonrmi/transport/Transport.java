@@ -60,11 +60,4 @@ public class Transport {
 	
 	public static class Shutdown {
 	}
-	
-	public static class DeliveryFailure {
-		public final Message message;
-		public DeliveryFailure(Message m) {
-			message = m;
-		}
-	}
 }

@@ -49,10 +49,10 @@ public class HttpClient extends MessageProcessor {
 		
 		@Override
 		public void run() {
-		for (Route dest : m.dests) if (!dest.hops.isEmpty()) {
+		for (Route dest : m.dests) {
 			RpcResponse response;
 			try {
-				URL requestUrl = dest.hops.getFirst().toURL();
+				URL requestUrl = dest.hops[0].toURL();
 				HttpURLConnection con = (HttpURLConnection) requestUrl.openConnection();
 				con.setRequestMethod("POST");
 				con.setRequestProperty("Content-Type", "application/json");

@@ -5,6 +5,7 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -108,7 +109,7 @@ public class RmiService extends MessageProcessor {
 	private void handle(RpcRequest request, List<Route> dests, Route src) {
 		for (Route dest : dests) {
 		RpcResponse response;
-		URI targetUri = dest.hops.getFirst();
+		URI targetUri = dest.hops[0];
 		RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
 		if (handler != null) response = handler.handle(request, dest, src);
 		else {
@@ -141,8 +142,7 @@ public class RmiService extends MessageProcessor {
 			RpcResponse response = new RpcResponse();
 			response.id = request.id;
 			response.error = RmiError.UNREACHABLE;
-			prependToEach(m.message.dests, src);
-			handle(response, dest, m.message.dests);
+			handle(response, dest, prependToEach(m.message.dests, src));
 		}
 		else if (m.message.contentOfType(RpcResponse.class)) {
 			RpcResponse response = m.message.getContentAs(RpcResponse.class, gson);
@@ -154,8 +154,7 @@ public class RmiService extends MessageProcessor {
 			RpcResponse response = new RpcResponse();
 			response.id = request.data;
 			response.error = RmiError.UNREACHABLE;
-			prependToEach(m.message.dests, src);
-			handle(response, dest, m.message.dests);
+			handle(response, dest, prependToEach(m.message.dests, src));
 		}
 		else if (m.message.contentOfType(Proxy.OnConnectionClosed.class)) {
 			Proxy.OnConnectionClosed request = m.message.getContentAs(Proxy.OnConnectionClosed.class, gson);
@@ -166,8 +165,7 @@ public class RmiService extends MessageProcessor {
 			callback.params = Arrays.copyOfRange(data, 0, data.length-1);
 			RpcResponse response = new RpcResponse();
 			response.error = RmiError.UNREACHABLE;
-			prependToEach(m.message.dests, src);
-			invokeCallback(callback, response, dest, m.message.dests);
+			invokeCallback(callback, response, dest, prependToEach(m.message.dests, src));
 		}
 		else System.err.println("Unexpected delivery failure of " + m.message.contentType);
 	}
@@ -181,12 +179,14 @@ public class RmiService extends MessageProcessor {
 		for (RpcHandler h : handlers.values()) h.periodicCleanup();
 	}
 	
-	private void prependToEach(List<Route> dests, Route src) {
-		for (Route dest : dests) for (Iterator<URI> i=src.hops.descendingIterator(); i.hasNext(); ) dest.hops.addFirst(i.next());
+	private List<Route> prependToEach(List<Route> dests, Route src) {
+		List<Route> out = new LinkedList<Route>();
+		for (Route dest : dests) out.add(dest.addFirst(src.hops));
+		return out;
 	}
 	
 	private void invokeCallback(Callback callback, RpcResponse response, Route dest, List<Route> srcs) {
-		URI targetUri = dest.hops.getFirst();
+		URI targetUri = dest.hops[0];
 		RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
 		if (handler != null) for (Route src : srcs) handler.handle(response, dest, src, callback);
 		else System.err.println("Callback target not found " + targetUri);

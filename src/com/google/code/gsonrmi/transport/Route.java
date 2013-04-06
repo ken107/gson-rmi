@@ -1,7 +1,7 @@
 package com.google.code.gsonrmi.transport;
 
 import java.net.URI;
-import java.util.LinkedList;
+import java.util.Arrays;
 
 import com.google.code.gsonrmi.Parameter;
 import com.google.code.gsonrmi.transport.Collections.Groupable;
@@ -13,28 +13,36 @@ public class Route implements Groupable<String> {
 		AUTHORITY
 	}
 
-	public final LinkedList<URI> hops;
-	public Parameter trackingId;
+	public final URI[] hops;
+	public final Parameter trackingId;
 	
 	public Route(URI... hops) {
-		this.hops = new LinkedList<URI>();
-		for (URI hop : hops) this.hops.add(hop);
+		this(null, hops);
 	}
 	
-	public Route(Route clone) {
-		hops = new LinkedList<URI>(clone.hops);
-		trackingId = clone.trackingId;
+	public Route(Object trackingId, URI... hops) {
+		this.trackingId = new Parameter(trackingId);
+		this.hops = hops;
 	}
 	
-	public Route setTrackingId(Object o) {
-		trackingId = new Parameter(o);
-		return this;
+	public Route addFirst(URI... hops) {
+		URI[] out = Arrays.copyOf(hops, hops.length+this.hops.length);
+		for (int i=0; i<this.hops.length; i++) out[hops.length+i] = this.hops[i];
+		return new Route(out);
+	}
+	
+	public Route removeFirst() {
+		return new Route(Arrays.copyOfRange(hops, 1, hops.length));
+	}
+	
+	public boolean isEmpty() {
+		return hops.length == 0;
 	}
 
 	@Override
 	public String getGroupKey(Object groupBy) {
-		if (GroupBy.SCHEME.equals(groupBy)) return hops.isEmpty() ? null : hops.getFirst().getScheme();
-		else if (GroupBy.AUTHORITY.equals(groupBy)) return hops.isEmpty() ? null : hops.getFirst().getAuthority();
+		if (GroupBy.SCHEME.equals(groupBy)) return hops.length == 0 ? null : hops[0].getScheme();
+		else if (GroupBy.AUTHORITY.equals(groupBy)) return hops.length == 0 ? null : hops[0].getAuthority();
 		else return null;
 	}
 }

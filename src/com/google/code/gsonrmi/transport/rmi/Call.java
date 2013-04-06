@@ -3,7 +3,6 @@ package com.google.code.gsonrmi.transport.rmi;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,8 +26,7 @@ public class Call {
 	}
 	
 	public Call(List<Route> targets, String method, Object... params) {
-		this.targets = new LinkedList<Route>();
-		for (Route target : targets) this.targets.add(new Route(target));
+		this.targets = targets;
 		this.method = method;
 		this.params = new Parameter[params.length];
 		for (int i=0; i<params.length; i++) this.params[i] = params[i] != null ? new Parameter(params[i]) : null;
@@ -61,8 +59,7 @@ public class Call {
 		if (session.id == null) session.id = UUID.randomUUID().toString();
 		try {
 			callback.session = session;
-			URI targetUri = callback.target.hops.removeFirst();
-			callback.target.hops.addFirst(new URI(targetUri.getScheme(), targetUri.getSchemeSpecificPart(), session.id));
+			callback.target.hops[0] = new URI(callback.target.hops[0].getScheme(), callback.target.hops[0].getSchemeSpecificPart(), session.id);
 			return this;
 		}
 		catch (URISyntaxException e) {

@@ -57,7 +57,7 @@ public class DefaultRpcHandler implements RpcHandler {
 		
 		RpcResponse r = invoker.doInvoke(request, target, new Context(dest, src));
 		if (r.error != null) {
-			System.err.println("Invoke response failed:  " + dest.hops.getFirst() + " method " + callback.method + ", " + r.error);
+			System.err.println("Invoke response failed:  " + dest.hops[0] + " method " + callback.method + ", " + r.error);
 			if (r.error.equals(RpcError.INVOCATION_EXCEPTION)) r.error.data.getValue(Exception.class, null).printStackTrace();
 		}
 	}
@@ -132,7 +132,7 @@ public class DefaultRpcHandler implements RpcHandler {
 			Session sessionAnn = findAnnotation(paramAnnotations, Session.class);
 			if (sessionAnn != null) {
 				ParamType paramTypeAnn = findAnnotation(paramAnnotations, ParamType.class);
-				AbstractSession session = getSession(c.dest.hops.getFirst().getFragment(), paramTypeAnn != null ? paramTypeAnn.value() : paramType, sessionAnn.create());
+				AbstractSession session = getSession(c.dest.hops[0].getFragment(), paramTypeAnn != null ? paramTypeAnn.value() : paramType, sessionAnn.create());
 				if (session == null) throw new ParamValidationException("Session not found or could not be created");
 				return session;
 			}

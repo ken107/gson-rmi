@@ -26,7 +26,7 @@ public class DefaultParamProcessor implements ParamProcessor {
 		if (param == null) return null;
 		ParamType paramTypeAnnotation = findAnnotation(paramAnnotations, ParamType.class);
 		if (paramTypeAnnotation != null) paramType = paramTypeAnnotation.value();
-		return param.getValue(paramType, paramDeserializer);
+		return paramType.equals(Parameter.class) ? param : param.getValue(paramType, paramDeserializer);
 	}
 
 	@Override

@@ -21,15 +21,14 @@ public class Call {
 	public static int defaultExpireSec = 60;
 	public int expireSec = defaultExpireSec;
 	
-	public Call(Route target, String method, Object... params) {
-		this(Arrays.asList(target), method, params);
+	public Call(Route target, String method, Object... args) {
+		this(Arrays.asList(target), method, args);
 	}
 	
-	public Call(List<Route> targets, String method, Object... params) {
+	public Call(List<Route> targets, String method, Object... args) {
 		this.targets = targets;
 		this.method = method;
-		this.params = new Parameter[params.length];
-		for (int i=0; i<params.length; i++) this.params[i] = params[i] != null ? new Parameter(params[i]) : null;
+		this.params = toParams(args);
 	}
 	
 	public Call expire(int sec) {
@@ -45,12 +44,11 @@ public class Call {
 		return callback(new Route(target), method, params);
 	}
 	
-	public Call callback(Route target, String method, Object... params) {
+	public Call callback(Route target, String method, Object... args) {
 		callback = new Callback();
 		callback.target = target;
 		callback.method = method;
-		callback.params = new Parameter[params.length];
-		for (int i=0; i<params.length; i++) callback.params[i] = params[i] != null ? new Parameter(params[i]) : null;
+		callback.params = toParams(args);
 		return this;
 	}
 	
@@ -81,5 +79,13 @@ public class Call {
 	
 	private Message getMessage() {
 		return new Message(null, Arrays.asList(new Route(URI.create("rmi:service"))), this);
+	}
+	
+	private Parameter[] toParams(Object[] args) {
+		Parameter[] params = new Parameter[args.length];
+		for (int i=0; i<args.length; i++) {
+			if (args[i] != null) params[i] = args[i] instanceof Parameter ? (Parameter) args[i] : new Parameter(args[i]);
+		}
+		return params;
 	}
 }

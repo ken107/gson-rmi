@@ -42,10 +42,10 @@ public class RmiService extends MessageProcessor {
 		addr = new URI(SCHEME, "service", null);
 		t = transport;
 		t.register(SCHEME, mq);
-		t.sendEvery(new Message(null, Arrays.asList(new Route(addr)), new PeriodicCleanup()), options.cleanupInterval, options.cleanupInterval);
+		new Call(new Route(addr), "periodicCleanup").sendEvery(t, options.cleanupInterval, options.cleanupInterval);
 		gson = deserializer;
 		handlers = new HashMap<String, RpcHandler>();
-		handlers.put("service", new DefaultRpcHandler(this, gson));
+		handlers.put(addr.getSchemeSpecificPart(), new DefaultRpcHandler(this, gson));
 		pendingCalls = new HashMap<Integer, Call>();
 	}
 	
@@ -63,7 +63,6 @@ public class RmiService extends MessageProcessor {
 		else if (m.contentOfType(RpcResponse.class)) handle(m.getContentAs(RpcResponse.class, gson), m.dests.get(0), Arrays.asList(m.src));
 		else if (m.contentOfType(DeliveryFailure.class)) handle(m.getContentAs(DeliveryFailure.class, gson), m.dests.get(0), m.src);
 		else if (m.contentOfType(Shutdown.class)) handle(m.getContentAs(Shutdown.class, gson));
-		else if (m.contentOfType(PeriodicCleanup.class)) handle(m.getContentAs(PeriodicCleanup.class, gson));
 		else if (m.contentOfType(Proxy.CheckConnection.class));
 		else if (m.contentOfType(Proxy.OnConnectionClosed.class));
 		else System.err.println("Unhandled message type: " + m.contentType);
@@ -174,8 +173,11 @@ public class RmiService extends MessageProcessor {
 		for (RpcHandler handler : handlers.values()) handler.shutdown();
 	}
 	
-	private void handle(PeriodicCleanup m) {
+	@RMI
+	public void periodicCleanup() {
+		int count = pendingCalls.size();
 		for (Iterator<Call> i=pendingCalls.values().iterator(); i.hasNext(); ) if (i.next().isExpired()) i.remove();
+		if (pendingCalls.size() < count) System.err.println("INFO: cleanup pending calls " + count + " -> " + pendingCalls.size());
 		for (RpcHandler h : handlers.values()) h.periodicCleanup();
 	}
 	
@@ -188,11 +190,8 @@ public class RmiService extends MessageProcessor {
 	private void invokeCallback(Callback callback, RpcResponse response, Route dest, List<Route> srcs) {
 		URI targetUri = dest.hops[0];
 		RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
-		if (handler != null) for (Route src : srcs) handler.handle(response, dest, src, callback);
+		if (handler != null) handler.handle(response, dest, srcs, callback);
 		else System.err.println("Callback target not found " + targetUri);
-	}
-	
-	private static class PeriodicCleanup {
 	}
 	
 	public static class Options {

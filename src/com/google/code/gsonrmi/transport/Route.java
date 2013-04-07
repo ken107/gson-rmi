@@ -28,11 +28,11 @@ public class Route implements Groupable<String> {
 	public Route addFirst(URI... hops) {
 		URI[] out = Arrays.copyOf(hops, hops.length+this.hops.length);
 		for (int i=0; i<this.hops.length; i++) out[hops.length+i] = this.hops[i];
-		return new Route(out);
+		return new Route(trackingId, out);
 	}
 	
 	public Route removeFirst() {
-		return new Route(Arrays.copyOfRange(hops, 1, hops.length));
+		return new Route(trackingId, Arrays.copyOfRange(hops, 1, hops.length));
 	}
 	
 	public boolean isEmpty() {

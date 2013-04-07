@@ -6,6 +6,7 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import com.google.code.gsonrmi.DefaultParamProcessor;
@@ -40,7 +41,7 @@ public class DefaultRpcHandler implements RpcHandler {
 	}
 
 	@Override
-	public void handle(RpcResponse response, Route dest, Route src, Callback callback) {
+	public void handle(RpcResponse response, Route dest, List<Route> srcs, Callback callback) {
 		if (callback.session != null) {
 			if (callback.session.id != null) {
 			sessions.put(callback.session.id, callback.session);
@@ -55,10 +56,12 @@ public class DefaultRpcHandler implements RpcHandler {
 		request.params[request.params.length-2] = response.result;
 		request.params[request.params.length-1] = response.error != null ? new Parameter(response.error) : null;
 		
+		for (Route src : srcs) {
 		RpcResponse r = invoker.doInvoke(request, target, new Context(dest, src));
 		if (r.error != null) {
 			System.err.println("Invoke response failed:  " + dest.hops[0] + " method " + callback.method + ", " + r.error);
 			if (r.error.equals(RpcError.INVOCATION_EXCEPTION)) r.error.data.getValue(Exception.class, null).printStackTrace();
+		}
 		}
 	}
 	
@@ -68,6 +71,7 @@ public class DefaultRpcHandler implements RpcHandler {
 
 	@Override
 	public void periodicCleanup() {
+		int count = sessions.size();
 		for (Iterator<AbstractSession> i=sessions.values().iterator(); i.hasNext(); ) {
 			AbstractSession session = i.next();
 			if (session.isInvalid()) {
@@ -75,6 +79,7 @@ public class DefaultRpcHandler implements RpcHandler {
 				session.onRemove();
 			}
 		}
+		if (sessions.size() < count) System.err.println("INFO: cleanup sessions " + count + " -> " + sessions.size());
 	}
 	
 	private AbstractSession getSession(String sessionId, Type type, boolean create) {

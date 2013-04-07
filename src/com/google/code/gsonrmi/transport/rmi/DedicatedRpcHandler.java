@@ -1,6 +1,7 @@
 package com.google.code.gsonrmi.transport.rmi;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -29,8 +30,8 @@ public class DedicatedRpcHandler extends Thread implements RpcHandler {
 	}
 
 	@Override
-	public void handle(RpcResponse response, Route dest, Route src, Callback callback) {
-		mq.add(new Object[] {response, dest, src, callback});
+	public void handle(RpcResponse response, Route dest, List<Route> srcs, Callback callback) {
+		mq.add(new Object[] {response, dest, srcs, callback});
 	}
 	
 	@Override
@@ -38,6 +39,7 @@ public class DedicatedRpcHandler extends Thread implements RpcHandler {
 		mq.add(new Object[] {"shutdown"});
 	}
 	
+	@SuppressWarnings("unchecked")
 	@Override
 	public void run() {
 		try {
@@ -47,7 +49,7 @@ public class DedicatedRpcHandler extends Thread implements RpcHandler {
 					RpcResponse response = handler.handle((RpcRequest) m[0], (Route) m[1], (Route) m[2]);
 					if (response != null) transport.send(new Message((Route) m[1], Arrays.asList((Route) m[2]), response));
 				}
-				else if (m[0] instanceof RpcResponse) handler.handle((RpcResponse) m[0], (Route) m[1], (Route) m[2], (Callback) m[3]);
+				else if (m[0] instanceof RpcResponse) handler.handle((RpcResponse) m[0], (Route) m[1], (List<Route>) m[2], (Callback) m[3]);
 				else if (m[0].equals("shutdown")) {
 					handler.shutdown();
 					break;

@@ -79,7 +79,7 @@ public class DefaultRpcHandler implements RpcHandler {
 				session.onRemove();
 			}
 		}
-		if (sessions.size() < count) System.err.println("INFO: cleanup sessions " + count + " -> " + sessions.size());
+		if (sessions.size() < count) System.err.println("INFO: " + target.getClass().getSimpleName() + "-" + (target.hashCode() % 1000) + " cleanup sessions " + count + " -> " + sessions.size());
 	}
 	
 	private AbstractSession getSession(String sessionId, Type type, boolean create) {

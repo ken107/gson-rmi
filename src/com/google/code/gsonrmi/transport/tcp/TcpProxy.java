@@ -10,9 +10,11 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+import com.google.code.gsonrmi.transport.DeliveryFailure;
 import com.google.code.gsonrmi.transport.Message;
 import com.google.code.gsonrmi.transport.Proxy;
 import com.google.code.gsonrmi.transport.Route;
@@ -48,22 +50,14 @@ public class TcpProxy extends Proxy {
 	@Override
 	public Connection createConnection(String remoteAuthority) {
 		try {
-			String[] tokens = remoteAuthority.split(":");
-			Socket s = new Socket(tokens[0], Integer.parseInt(tokens[1]));
-			TcpConnection c = new TcpConnection(s, remoteAuthority);
+			TcpConnection c = new TcpConnection(null, remoteAuthority);
 			c.start();
 			return c;
 		}
 		catch (IOException e) {
 			e.printStackTrace();
 		}
-		catch (NumberFormatException e) {
-			e.printStackTrace();
-		}
 		catch (URISyntaxException e) {
-			e.printStackTrace();
-		}
-		catch (ArrayIndexOutOfBoundsException e) {
 			e.printStackTrace();
 		}
 		return null;
@@ -107,16 +101,16 @@ public class TcpProxy extends Proxy {
 	}
 	
 	private class TcpConnection extends Thread implements Connection {
-		private final Socket s;
-		private final BufferedReader in;
-		private final PrintWriter out;
+		private Socket s;
+		private volatile PrintWriter out;
 		private final URI remoteAddr;
+		private final List<Message> sendQueue;
 		
 		public TcpConnection(Socket socket, String remoteAuthority) throws URISyntaxException, IOException {
 			s = socket;
-			in = new BufferedReader(new InputStreamReader(socket.getInputStream(), "utf-8"));
-			out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), "utf-8"), true);
+			if (s != null) out = new PrintWriter(new OutputStreamWriter(s.getOutputStream(), "utf-8"), true);
 			remoteAddr = new URI(getScheme(), remoteAuthority, null, null, null);
+			sendQueue = new LinkedList<Message>();
 		}
 		
 		@Override
@@ -127,7 +121,7 @@ public class TcpProxy extends Proxy {
 		@Override
 		public void shutdown() {
 			try {
-				s.close();
+				if (s != null) s.close();
 			}
 			catch (IOException e) {
 				e.printStackTrace();
@@ -136,14 +130,34 @@ public class TcpProxy extends Proxy {
 		
 		@Override
 		public void send(Message m) {
+			if (out != null) send(m, out);
+			else {
+				synchronized (sendQueue) {
+					sendQueue.add(m);
+				}
+				if (out != null) send(m, out);
+			}
+		}
+		
+		private void send(Message m, PrintWriter pw) {
 			LinkedList<Route> dests = new LinkedList<Route>();
 			for (Route dest : m.dests) dests.add(dest.removeFirst());
-			out.println(gson.toJson(new Message(m.src, dests, m.content, m.contentType)));
+			pw.println(gson.toJson(new Message(m.src, dests, m.content, m.contentType)));
 		}
 		
 		@Override
 		public void run() {
 			try {
+				if (out == null) {
+					String[] tokens = remoteAddr.getAuthority().split(":");
+					s = new Socket(tokens[0], Integer.parseInt(tokens[1]));
+					synchronized (sendQueue) {
+						PrintWriter pw = new PrintWriter(new OutputStreamWriter(s.getOutputStream(), "utf-8"), true);
+						for (Message m : sendQueue) send(m, pw);
+						out = pw;
+					}
+				}
+				BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream(), "utf-8"));
 				String line;
 				while ((line = in.readLine()) != null) {
 					Message m = gson.fromJson(line, Message.class);
@@ -151,7 +165,22 @@ public class TcpProxy extends Proxy {
 				}
 			}
 			catch (IOException e) {
-				if (!s.isClosed()) e.printStackTrace();
+				if (s != null) {
+					if (!s.isClosed()) e.printStackTrace();
+				}
+				else {
+					System.err.println("Connect failed to " + remoteAddr.getAuthority());
+					synchronized (sendQueue) {
+						for (Message m : sendQueue) if (!m.contentOfType(DeliveryFailure.class))
+							transport.send(new Message(null, Arrays.asList(m.src), new DeliveryFailure(m)));
+					}
+				}
+			}
+			try {
+				if (s != null) s.close();
+			}
+			catch (IOException e) {
+				e.printStackTrace();
 			}
 		}
 	}

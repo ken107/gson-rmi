@@ -138,15 +138,18 @@ public class RmiService extends MessageProcessor {
 	private void handle(DeliveryFailure m, Route dest, Route src) {
 		if (m.message.contentOfType(RpcRequest.class)) {
 			RpcRequest request = m.message.getContentAs(RpcRequest.class, gson);
-			RpcResponse response = new RpcResponse();
-			response.id = request.id;
-			response.error = RmiError.UNREACHABLE;
-			handle(response, dest, prependToEach(m.message.dests, src));
+			if (request.id != null) {
+				RpcResponse response = new RpcResponse();
+				response.id = request.id;
+				response.error = RmiError.UNREACHABLE;
+				handle(response, dest, prependToEach(m.message.dests, src));
+			}
+			else System.err.println("Failed to deliver notification(s): " + request.method);
 		}
 		else if (m.message.contentOfType(RpcResponse.class)) {
 			RpcResponse response = m.message.getContentAs(RpcResponse.class, gson);
 			Integer responseId = response.id.getValue(Integer.class, gson);
-			System.err.println("Delivery failed for response with id " + responseId);
+			System.err.println("Failed to deliver response with id " + responseId);
 		}
 		else if (m.message.contentOfType(Proxy.CheckConnection.class)) {
 			Proxy.CheckConnection request = m.message.getContentAs(Proxy.CheckConnection.class, gson);
@@ -166,7 +169,7 @@ public class RmiService extends MessageProcessor {
 			response.error = RmiError.UNREACHABLE;
 			invokeCallback(callback, response, dest, prependToEach(m.message.dests, src));
 		}
-		else System.err.println("Unexpected delivery failure of " + m.message.contentType);
+		else System.err.println("Unhandled delivery failure of " + m.message.contentType);
 	}
 	
 	private void handle(Shutdown m) {

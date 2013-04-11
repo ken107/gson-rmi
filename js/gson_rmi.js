@@ -26,7 +26,7 @@ function RmiService(sendFunc, errorFunc) {
 		if (callback) {
 			callback.lastSent = new Date().getTime();
 			if (session) {
-				if (!session.id) session.id = new Date().getTime();
+				if (typeof(session.id) == 'undefined') session.id = new Date().getTime();
 				callback.target.hops[0] = callback.target.hops[0].split(/#/)[0] + "#" + session.id;
 				callback.session = session;
 			}
@@ -53,11 +53,10 @@ function RmiService(sendFunc, errorFunc) {
 		var tokens = targetUri.split(/[:#]/);
 		var handler = handlers[tokens[1]];
 		if (handler) {
-			if (handler.target[request.method]) {
+			if (typeof(handler.target[request.method]) != 'undefined') {
 				var sessionId = tokens[2];
 				var session = sessionId ? handler.sessions[sessionId] : null;
 				var context = {src: src, dest: dest, session: session};
-				try {
 					response.result = handler.target[request.method].apply(context, request.params);
 					if (context.session != session) {
 						if (context.session) {
@@ -72,10 +71,6 @@ function RmiService(sendFunc, errorFunc) {
 						}
 						else delete handler.sessions[sessionId];
 					}
-				}
-				catch (exception) {
-					response.error = {code: -32000, message: "Invocation exception", data: exception};
-				}
 			}
 			else response.error = {code: -32601, message: "Method not found"};
 		}
@@ -92,7 +87,7 @@ function RmiService(sendFunc, errorFunc) {
 			var tokens = targetUri.split(/[:#]/);
 			var handler = handlers[tokens[1]];
 			if (handler) {
-				if (handler.target[callback.method]) {
+				if (typeof(handler.target[callback.method]) != 'undefined') {
 					if (callback.session) handler.sessions[callback.session.id] = callback.session;
 					var sessionId = tokens[2];
 					var session = sessionId ? handler.sessions[sessionId] : null;

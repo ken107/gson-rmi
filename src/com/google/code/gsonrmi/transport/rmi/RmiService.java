@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.TimerTask;
 
 import com.google.code.gsonrmi.Parameter;
 import com.google.code.gsonrmi.RpcError;
@@ -32,6 +33,7 @@ public class RmiService extends MessageProcessor {
 	private final Gson gson;
 	private final Map<String, RpcHandler> handlers;
 	private final Map<Integer, Call> pendingCalls;
+	private final TimerTask cleanupTask;
 	private int idGen;
 	
 	public RmiService(Transport transport, Gson deserializer) throws URISyntaxException {
@@ -42,11 +44,11 @@ public class RmiService extends MessageProcessor {
 		addr = new URI(SCHEME, "service", null);
 		t = transport;
 		t.register(SCHEME, mq);
-		new Call(new Route(addr), "periodicCleanup").sendEvery(t, options.cleanupInterval, options.cleanupInterval);
 		gson = deserializer;
 		handlers = new HashMap<String, RpcHandler>();
 		handlers.put(addr.getSchemeSpecificPart(), new DefaultRpcHandler(this, gson));
 		pendingCalls = new HashMap<Integer, Call>();
+		cleanupTask = new Call(new Route(addr), "periodicCleanup").sendEvery(t, options.cleanupInterval, options.cleanupInterval);
 	}
 	
 	@RMI
@@ -174,6 +176,7 @@ public class RmiService extends MessageProcessor {
 	
 	private void handle(Shutdown m) {
 		for (RpcHandler handler : handlers.values()) handler.shutdown();
+		cleanupTask.cancel();
 	}
 	
 	@RMI

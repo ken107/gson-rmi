@@ -4,6 +4,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.TimerTask;
 import java.util.UUID;
 
 import com.google.code.gsonrmi.Parameter;
@@ -69,12 +70,12 @@ public class Call {
 		t.send(getMessage());
 	}
 	
-	public void sendAfter(Transport t, long delay) {
-		t.sendAfter(getMessage(), delay);
+	public TimerTask sendAfter(Transport t, long delay) {
+		return t.sendAfter(getMessage(), delay);
 	}
 	
-	public void sendEvery(Transport t, long delay, long period) {
-		t.sendEvery(getMessage(), delay, period);
+	public TimerTask sendEvery(Transport t, long delay, long period) {
+		return t.sendEvery(getMessage(), delay, period);
 	}
 	
 	private Message getMessage() {

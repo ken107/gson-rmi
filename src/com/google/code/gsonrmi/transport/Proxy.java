@@ -104,16 +104,21 @@ public abstract class Proxy extends MessageProcessor {
 	}
 	
 	/**
-	 * Termination proxies should not forward this message. Sender of this message can
-	 * rely on DeliveryFailure to know if the destinations are no longer reachable
+	 * Access proxies allow external clients to access network services.
+	 * These connections are normally terminal and short-lived.
+	 * Access proxies should not forward this message to clients.
+	 * Sender of this message can rely on DeliveryFailure to know that
+	 * a client is no longer reachable.
 	 */
 	public static class CheckConnection {
 		public Parameter data;
 	}
 	
 	/**
-	 * Proxies handling short-lived connections must save this message and send
-	 * DeliveryFailure when the connection closes
+	 * Access proxies allow external clients to access network services.
+	 * These connections are normally terminal and short-lived.
+	 * Access proxies should save this message and send DeliveryFailure
+	 * to let the sender know when the connection closes.
 	 */
 	public static class OnConnectionClosed {
 		public Parameter data;

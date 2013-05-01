@@ -3,9 +3,11 @@ package com.google.code.gsonrmi.transport.tcp;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
+import java.net.StandardSocketOptions;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
+import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -57,6 +59,10 @@ public class TcpAccessProxy extends Proxy {
 		super.handle(m);
 		listener.shutdown();
 	}
+	
+	protected void setSocketOptions(SocketChannel sc) throws IOException {
+		sc.setOption(StandardSocketOptions.SO_KEEPALIVE, opts.keepAlive);
+	}
 
 	private class Listener extends Thread {
 		private final Selector selector;
@@ -80,7 +86,6 @@ public class TcpAccessProxy extends Proxy {
 		@Override
 		public void run() {
 			try {
-				int idGen = 0;
 				while (!shutdown) {
 					selector.select();
 					Set<SelectionKey> readyKeys = selector.selectedKeys();
@@ -92,8 +97,10 @@ public class TcpAccessProxy extends Proxy {
 							if (key.isAcceptable()) {
 								SocketChannel sc = ((ServerSocketChannel) key.channel()).accept();
 								sc.configureBlocking(false);
+								setSocketOptions(sc);
 								SelectionKey k = sc.register(selector, SelectionKey.OP_READ);
-								Connection con = new AccessConnection(k, new URI(getScheme(), "c" + ++idGen, null, null, null));
+								InetSocketAddress addr = (InetSocketAddress) sc.getRemoteAddress();
+								Connection con = new AccessConnection(k, new URI(getScheme(), addr.getHostString() + ":" + addr.getPort(), null, "a=1", null));
 								addConnection(con);
 								k.attach(con);
 							}
@@ -148,7 +155,7 @@ public class TcpAccessProxy extends Proxy {
 						if (b[i] == 10) {
 							String line = new String(b, readBuffer.position(), i-readBuffer.position());
 							Message m = gson.fromJson(line, Message.class);
-							transport.send(new Message(m.src.addFirst(remoteAddr), m.dests, m.content, m.contentType));
+							if (m != null) transport.send(new Message(m.src.addFirst(remoteAddr), m.dests, m.content, m.contentType));
 							readBuffer.position(i+1);
 						}
 					}
@@ -160,7 +167,7 @@ public class TcpAccessProxy extends Proxy {
 				}
 				else throw new IOException("Unexpected " + bytes + " bytes read");
 			}
-			catch (IOException e) {
+			catch (Exception e) {
 				e.printStackTrace();
 				try {
 					sc.close();
@@ -229,6 +236,9 @@ public class TcpAccessProxy extends Proxy {
 				catch (UnsupportedEncodingException e) {
 					e.printStackTrace();
 				}
+				catch (CancelledKeyException e) {
+					e.printStackTrace();
+				}
 			}
 		}
 
@@ -250,5 +260,6 @@ public class TcpAccessProxy extends Proxy {
 	public static class Options extends Proxy.Options {
 		public int readBufferSize = 4096;
 		public int writeBufferSize = 4096;
+		public boolean keepAlive = true;
 	}
 }

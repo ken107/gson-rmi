@@ -37,7 +37,12 @@ public class DefaultRpcHandler implements RpcHandler {
 	
 	@Override
 	public RpcResponse handle(RpcRequest request, Route dest, Route src) {
-		return invoker.doInvoke(request, target, new Context(dest, src));
+		RpcResponse response = invoker.doInvoke(request, target, new Context(dest, src));
+		if (response.result != null && response.result.getValue(Object.class, null) instanceof AsyncResponse) {
+			response.result.getValue(AsyncResponse.class, null).setRequest(request, dest, src);
+			return null;
+		}
+		else return response;
 	}
 
 	@Override

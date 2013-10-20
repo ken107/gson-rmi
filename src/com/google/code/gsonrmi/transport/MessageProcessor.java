@@ -13,12 +13,19 @@ public abstract class MessageProcessor extends Thread {
 	
 	@Override
 	public void run() {
-		try {
-			Message m;
-			do process(m = mq.take());
-			while (!m.contentOfType(Transport.Shutdown.class));
-		}
-		catch (InterruptedException e) {
+		boolean quit = false;
+		while (!quit) {
+			try {
+				Message m = mq.take();
+				if (m.contentOfType(Transport.Shutdown.class)) quit = true;
+				process(m);
+			}
+			catch (RuntimeException e) {
+				e.printStackTrace();
+			}
+			catch (InterruptedException e) {
+				quit = true;
+			}
 		}
 	}
 	

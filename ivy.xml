@@ -2,10 +2,10 @@
 <ivy-module version="2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:noNamespaceSchemaLocation="http://ant.apache.org/ivy/schemas/ivy.xsd">
     <info
-        organisation="com.google.code.gsonrmi"
+        organisation="com.google.code"
         module="gson-rmi"
         revision="0.1"
-        status="integration">
+        status="release">
 	</info>
     <dependencies>
     	<dependency name="gson" rev="latest.release" org="com.google.code.gson" conf="default"/>

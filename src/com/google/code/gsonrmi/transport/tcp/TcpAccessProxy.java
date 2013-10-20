@@ -34,7 +34,7 @@ public class TcpAccessProxy extends Proxy {
 	private final Options opts;
 	
 	public TcpAccessProxy(List<InetSocketAddress> listeningAddresses, Transport transport, Gson serializer) throws IOException {
-		this(listeningAddresses, transport, serializer, new Options());
+		this(listeningAddresses, transport, serializer, null);
 	}
 	
 	public TcpAccessProxy(List<InetSocketAddress> listeningAddresses, Transport transport, Gson serializer, Options options) throws IOException {

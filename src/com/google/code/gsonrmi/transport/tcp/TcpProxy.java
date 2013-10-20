@@ -27,7 +27,11 @@ public class TcpProxy extends Proxy {
 	private final List<TcpListener> listeners;
 	
 	public TcpProxy(List<InetSocketAddress> listeningAddresses, Transport transport, Gson serializer) throws IOException {
-		super(transport, serializer);
+		this(listeningAddresses, transport, serializer, null);
+	}
+	
+	public TcpProxy(List<InetSocketAddress> listeningAddresses, Transport transport, Gson serializer, Options options) throws IOException {
+		super(transport, serializer, options);
 		listeners = new LinkedList<TcpListener>();
 		for (InetSocketAddress address : listeningAddresses) {
 			TcpListener l = new TcpListener(address);

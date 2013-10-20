@@ -2,6 +2,7 @@ package com.google.code.gsonrmi.transport;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -21,10 +22,11 @@ public abstract class Proxy extends MessageProcessor {
 	private final TimerTask cleanupTask;
 	
 	protected Proxy(Transport t, Gson serializer) {
-		this(t, serializer, new Options());
+		this(t, serializer, null);
 	}
 	
 	protected Proxy(Transport t, Gson serializer, Options options) {
+		if (options == null) options = new Options();
 		transport = t;
 		transport.register(getScheme(), mq);
 		gson = serializer;
@@ -37,6 +39,10 @@ public abstract class Proxy extends MessageProcessor {
 	
 	public void addConnection(Connection c) {
 		mq.add(new Message(null, null, new AddConnection(c)));
+	}
+	
+	protected Collection<Connection> getConnections() {
+		return cons.values();
 	}
 	
 	@Override
@@ -86,7 +92,7 @@ public abstract class Proxy extends MessageProcessor {
 	}
 	
 	public static class Options {
-		public long cleanupInterval = 5*60*1000;
+		public long cleanupInterval = 60*1000;
 	}
 	
 	public static class AddConnection {

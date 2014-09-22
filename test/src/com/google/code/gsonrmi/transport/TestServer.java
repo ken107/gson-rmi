@@ -1,4 +1,4 @@
-package com.google.code.gsonrmi;
+package com.google.code.gsonrmi.transport;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -10,14 +10,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.code.gsonrmi.Parameter;
 import com.google.code.gsonrmi.annotations.ParamType;
 import com.google.code.gsonrmi.annotations.RMI;
 import com.google.code.gsonrmi.annotations.Session;
 import com.google.code.gsonrmi.annotations.Src;
 import com.google.code.gsonrmi.serializer.ExceptionSerializer;
 import com.google.code.gsonrmi.serializer.ParameterSerializer;
-import com.google.code.gsonrmi.transport.Route;
-import com.google.code.gsonrmi.transport.Transport;
 import com.google.code.gsonrmi.transport.rmi.AbstractSession;
 import com.google.code.gsonrmi.transport.rmi.Call;
 import com.google.code.gsonrmi.transport.rmi.RmiService;
@@ -25,11 +24,11 @@ import com.google.code.gsonrmi.transport.tcp.TcpProxy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-public class Test {
+public class TestServer {
 	
 	private final Transport t;
 	
-	public Test(Transport t) {
+	public TestServer(Transport t) {
 		this.t = t;
 	}
 	
@@ -101,7 +100,7 @@ public class Test {
 		Transport t = new Transport();
 		new TcpProxy(Arrays.asList(new InetSocketAddress(30100)), t, gson).start();
 		new RmiService(t, gson).start();
-		new Call(new Route(new URI("rmi:service")), "register", "test", new Test(t)).send(t);
+		new Call(new Route(new URI("rmi:service")), "register", "test", new TestServer(t)).send(t);
 	}
 	
 	public static class Person {

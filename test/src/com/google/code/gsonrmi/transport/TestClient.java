@@ -1,4 +1,4 @@
-package com.google.code.gsonrmi;
+package com.google.code.gsonrmi.transport;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -8,15 +8,14 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.UUID;
 
-import com.google.code.gsonrmi.Test.MySession;
-import com.google.code.gsonrmi.Test.Person;
-import com.google.code.gsonrmi.Test.Roster;
+import com.google.code.gsonrmi.*;
+import com.google.code.gsonrmi.transport.TestServer.MySession;
+import com.google.code.gsonrmi.transport.TestServer.Person;
+import com.google.code.gsonrmi.transport.TestServer.Roster;
 import com.google.code.gsonrmi.annotations.RMI;
 import com.google.code.gsonrmi.annotations.Session;
 import com.google.code.gsonrmi.serializer.ExceptionSerializer;
 import com.google.code.gsonrmi.serializer.ParameterSerializer;
-import com.google.code.gsonrmi.transport.Route;
-import com.google.code.gsonrmi.transport.Transport;
 import com.google.code.gsonrmi.transport.rmi.AbstractSession;
 import com.google.code.gsonrmi.transport.rmi.Call;
 import com.google.code.gsonrmi.transport.rmi.RmiService;

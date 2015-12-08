@@ -155,3 +155,9 @@ function Callback(target, method, args) {
 	this.args = args || [];
 	this.lastSent = 0;
 }
+
+if (typeof exports != "undefined") {
+	exports.Callback = Callback;
+	exports.RmiService = RmiService;
+	exports.Route = Route;
+}

@@ -21,6 +21,7 @@ import com.google.code.gsonrmi.transport.Route;
 import com.google.code.gsonrmi.transport.Transport;
 import com.google.code.gsonrmi.transport.Transport.Shutdown;
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 
 public class TcpProxy extends Proxy {
 	
@@ -164,8 +165,14 @@ public class TcpProxy extends Proxy {
 				BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream(), "utf-8"));
 				String line;
 				while ((line = in.readLine()) != null) {
-					Message m = gson.fromJson(line, Message.class);
-					transport.send(new Message(m.src.addFirst(remoteAddr), m.dests, m.content, m.contentType));
+					try {
+						Message m = gson.fromJson(line, Message.class);
+						transport.send(new Message(m.src.addFirst(remoteAddr), m.dests, m.content, m.contentType));
+					}
+					catch (JsonSyntaxException e) {
+						System.err.println("Client send: \"" + line + "\"");
+						e.printStackTrace();
+					}
 				}
 			}
 			catch (IOException e) {

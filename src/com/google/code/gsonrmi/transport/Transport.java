@@ -31,7 +31,10 @@ public class Transport {
 		for (Map.Entry<String, List<Route>> entry : Collections.group(m.dests, Route.GroupBy.SCHEME).entrySet()) {
 			Queue<? super Message> queue = queues.get(entry.getKey());
 			if (queue != null) queue.add(new Message(m.src, entry.getValue(), m.content, m.contentType));
-			else new RuntimeException("No handler for protocol " + entry.getKey()).printStackTrace();
+			else {
+				new RuntimeException("No handler for protocol " + entry.getKey()).printStackTrace();
+				System.err.println(m.contentType);
+			}
 		}
 	}
 	

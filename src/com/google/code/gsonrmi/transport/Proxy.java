@@ -20,11 +20,11 @@ public abstract class Proxy extends MessageProcessor {
 	protected final Gson gson;
 	private final Map<String, Connection> cons;
 	private final TimerTask cleanupTask;
-	
+
 	protected Proxy(Transport t, Gson serializer) {
 		this(t, serializer, null);
 	}
-	
+
 	protected Proxy(Transport t, Gson serializer, Options options) {
 		if (options == null) options = new Options();
 		transport = t;
@@ -33,18 +33,18 @@ public abstract class Proxy extends MessageProcessor {
 		cons = new HashMap<String, Connection>();
 		cleanupTask = t.sendEvery(new Message(null, Arrays.asList(new Route(URI.create(getScheme() + ":proxy"))), new CleanUp()), options.cleanupInterval, options.cleanupInterval);
 	}
-	
+
 	protected abstract String getScheme();
 	protected abstract Connection createConnection(String remoteAuthority);
-	
+
 	public void addConnection(Connection c) {
 		mq.add(new Message(null, null, new AddConnection(c)));
 	}
-	
+
 	protected Collection<Connection> getConnections() {
 		return cons.values();
 	}
-	
+
 	@Override
 	protected void process(Message m) {
 		if (m.contentOfType(Shutdown.class)) handle(m.getContentAs(Shutdown.class, gson));
@@ -52,16 +52,16 @@ public abstract class Proxy extends MessageProcessor {
 		else if (m.contentOfType(CleanUp.class)) handle(m.getContentAs(CleanUp.class, gson));
 		else handle(m);
 	}
-	
+
 	protected void handle(Shutdown m) {
 		for (Connection c : cons.values()) c.shutdown();
 		cleanupTask.cancel();
 	}
-	
+
 	private void handle(AddConnection m) {
 		cons.put(m.con.getRemoteAuthority(), m.con);
 	}
-	
+
 	protected void handle(Message m) {
 		List<Route> failedRoutes = new LinkedList<Route>();
 		for (Map.Entry<String, List<Route>> entry : Collections.group(m.dests, Route.GroupBy.AUTHORITY).entrySet()) {
@@ -81,34 +81,34 @@ public abstract class Proxy extends MessageProcessor {
 			transport.send(new Message(null, Arrays.asList(m.src), failure));
 		}
 	}
-	
+
 	protected void handle(CleanUp m) {
 		int count = cons.size();
 		for (Iterator<Connection> i=cons.values().iterator(); i.hasNext(); ) if (!i.next().isAlive()) i.remove();
 		if (cons.size() < count) System.err.println("INFO: " + getClass().getSimpleName() + " cleanup connections " + count + " -> " + cons.size());
 	}
-	
+
 	protected static class CleanUp {
 	}
-	
+
 	public static class Options {
 		public long cleanupInterval = 60*1000;
 	}
-	
+
 	public static class AddConnection {
 		public final Connection con;
 		public AddConnection(Connection c) {
 			con = c;
 		}
 	}
-	
+
 	public static interface Connection {
 		String getRemoteAuthority();
 		boolean isAlive();
 		void send(Message m);
 		void shutdown();
 	}
-	
+
 	/**
 	 * Access proxies allow external clients to access network services.
 	 * These connections are normally terminal and short-lived.
@@ -119,7 +119,7 @@ public abstract class Proxy extends MessageProcessor {
 	public static class CheckConnection {
 		public Parameter data;
 	}
-	
+
 	/**
 	 * Access proxies allow external clients to access network services.
 	 * These connections are normally terminal and short-lived.

@@ -11,7 +11,7 @@ import com.google.code.gsonrmi.transport.Route;
 import com.google.code.gsonrmi.transport.Transport;
 
 public class AsyncResponse {
-	
+
 	protected RpcRequest request;
 	protected Route dest;
 	protected Route src;
@@ -24,21 +24,21 @@ public class AsyncResponse {
 		this.src = src;
 		trySend();
 	}
-	
+
 	public void send(Object result, Transport transport) {
 		response = new RpcResponse();
 		response.result = result != null ? new Parameter(result) : null;
 		this.transport = transport;
 		trySend();
 	}
-	
+
 	public void sendException(Exception exception, Transport transport) {
 		response = new RpcResponse();
 		response.error = new RpcError(RpcError.INVOCATION_EXCEPTION, exception);
 		this.transport = transport;
 		trySend();
 	}
-	
+
 	protected void trySend() {
 		if (request != null && response != null) {
 			response.id = request.id;

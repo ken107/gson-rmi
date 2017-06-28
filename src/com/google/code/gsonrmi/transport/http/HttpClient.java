@@ -23,13 +23,13 @@ public class HttpClient extends MessageProcessor {
 	private final Transport t;
 	private final Gson gson;
 	private final Executor exec;
-	
+
 	public HttpClient(Transport transport, Gson serializer, Executor executor) {
 		t = transport;
 		gson = serializer;
 		exec = executor;
 	}
-	
+
 	@Override
 	protected void process(Message m) {
 		if (m.contentOfType(Shutdown.class)) handle(m.getContentAs(Shutdown.class, gson));
@@ -42,11 +42,11 @@ public class HttpClient extends MessageProcessor {
 
 	private class Task implements Runnable {
 		private Message m;
-		
+
 		public Task(Message message) {
 			m = message;
 		}
-		
+
 		@Override
 		public void run() {
 		for (Route dest : m.dests) {
@@ -59,7 +59,7 @@ public class HttpClient extends MessageProcessor {
 				con.setRequestProperty("Content-Class", m.contentType);
 				con.setDoOutput(true);
 				con.getOutputStream().write(m.content.getSerializedValue(gson).toString().getBytes("utf-8"));
-				
+
 				int responseCode = con.getResponseCode();
 				if (responseCode == HttpURLConnection.HTTP_OK) {
 					response = gson.fromJson(new InputStreamReader(con.getInputStream(), "utf-8"), RpcResponse.class);

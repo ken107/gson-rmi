@@ -20,7 +20,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 public class SampleClient {
-	
+
 	@RMI
 	public void returnValueMethod(String greeting, RpcError error) {
 		System.out.println(greeting);

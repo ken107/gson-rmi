@@ -18,7 +18,7 @@ public class SampleServer {
 			.registerTypeAdapter(Exception.class, new ExceptionSerializer())
 			.registerTypeAdapter(Parameter.class, new ParameterSerializer())
 			.create();
-		
+
 		new RpcServer(30100, new RpcTarget(new SampleServer(), gson), gson).start();
 	}
 }

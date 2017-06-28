@@ -19,7 +19,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 public class SampleServer {
-	
+
 	@RMI
 	public String someMethod(String name) {
 		return "Hello, " + name;

@@ -6,11 +6,11 @@ public class AbstractSession {
 	public long lastAccessed;
 	public int expireSec;
 	public boolean invalid;
-	
+
 	public boolean isInvalid() {
 		return invalid || expireSec > 0 && System.currentTimeMillis()-lastAccessed > expireSec*1000;
 	}
-	
+
 	protected void onRemove() {
 	}
 }

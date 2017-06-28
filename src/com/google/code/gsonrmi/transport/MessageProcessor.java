@@ -6,11 +6,11 @@ import java.util.concurrent.LinkedBlockingQueue;
 public abstract class MessageProcessor extends Thread {
 
 	protected final BlockingQueue<Message> mq;
-	
+
 	protected MessageProcessor() {
 		mq = new LinkedBlockingQueue<Message>();
 	}
-	
+
 	@Override
 	public void run() {
 		boolean quit = false;
@@ -28,6 +28,6 @@ public abstract class MessageProcessor extends Thread {
 			}
 		}
 	}
-	
+
 	protected abstract void process(Message m);
 }

@@ -9,7 +9,7 @@ public class WebsocketProxy extends Proxy {
 	public WebsocketProxy(Transport t, Gson serializer) {
 		this(t, serializer, null);
 	}
-	
+
 	public WebsocketProxy(Transport t, Gson serializer, Options options) {
 		super(t, serializer, options);
 	}

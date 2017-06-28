@@ -27,7 +27,7 @@ import com.google.gson.Gson;
 public class RmiService extends MessageProcessor {
 
 	public static final String SCHEME = "rmi";
-	
+
 	private final URI addr;
 	private final Transport t;
 	private final Gson gson;
@@ -35,11 +35,11 @@ public class RmiService extends MessageProcessor {
 	private final Map<Integer, Call> pendingCalls;
 	private final TimerTask cleanupTask;
 	private int idGen;
-	
+
 	public RmiService(Transport transport, Gson deserializer) throws URISyntaxException {
 		this(transport, deserializer, new Options());
 	}
-	
+
 	public RmiService(Transport transport, Gson deserializer, Options options) throws URISyntaxException {
 		addr = new URI(SCHEME, "service", null);
 		t = transport;
@@ -50,14 +50,14 @@ public class RmiService extends MessageProcessor {
 		pendingCalls = new HashMap<Integer, Call>();
 		cleanupTask = new Call(new Route(addr), "periodicCleanup").sendEvery(t, options.cleanupInterval, options.cleanupInterval);
 	}
-	
+
 	@RMI
 	public URI register(String id, Object target) throws URISyntaxException {
 		if (target instanceof RpcHandler) handlers.put(id, (RpcHandler) target);
 		else handlers.put(id, new DefaultRpcHandler(target, gson));
 		return new URI(SCHEME, id, null);
 	}
-	
+
 	@Override
 	protected void process(Message m) {
 		if (m.contentOfType(Call.class)) handle(m.getContentAs(Call.class, gson));
@@ -69,7 +69,7 @@ public class RmiService extends MessageProcessor {
 		else if (m.contentOfType(Proxy.OnConnectionClosed.class));
 		else System.err.println("Unhandled message type: " + m.contentType);
 	}
-	
+
 	private void handle(Call m) {
 		m.timeSent = System.currentTimeMillis();
 		if ("_onConnectionClosed".equals(m.method)) {
@@ -106,7 +106,7 @@ public class RmiService extends MessageProcessor {
 			}
 		}
 	}
-	
+
 	private void handle(RpcRequest request, List<Route> dests, Route src) {
 		for (Route dest : dests) {
 		RpcResponse response;
@@ -129,14 +129,14 @@ public class RmiService extends MessageProcessor {
 		}
 		}
 	}
-	
+
 	private void handle(RpcResponse response, Route dest, List<Route> srcs) {
 		Integer responseId = response.id.getValue(Integer.class, gson);
 		Call pendingCall = pendingCalls.get(responseId);
 		if (pendingCall != null) invokeCallback(pendingCall.callback, response, dest, srcs);
 		else System.err.println("No pending request with id " + responseId);
 	}
-	
+
 	private void handle(DeliveryFailure m, Route dest, Route src) {
 		if (m.message.contentOfType(RpcRequest.class)) {
 			RpcRequest request = m.message.getContentAs(RpcRequest.class, gson);
@@ -173,12 +173,12 @@ public class RmiService extends MessageProcessor {
 		}
 		else System.err.println("Unhandled delivery failure of " + m.message.contentType);
 	}
-	
+
 	private void handle(Shutdown m) {
 		for (RpcHandler handler : handlers.values()) handler.shutdown();
 		cleanupTask.cancel();
 	}
-	
+
 	@RMI
 	public void periodicCleanup() {
 		int count = pendingCalls.size();
@@ -186,20 +186,20 @@ public class RmiService extends MessageProcessor {
 		if (pendingCalls.size() < count) System.err.println("INFO: cleanup pending calls " + count + " -> " + pendingCalls.size());
 		for (RpcHandler h : handlers.values()) h.periodicCleanup();
 	}
-	
+
 	private List<Route> prependToEach(List<Route> dests, Route src) {
 		List<Route> out = new LinkedList<Route>();
 		for (Route dest : dests) out.add(dest.addFirst(src.hops));
 		return out;
 	}
-	
+
 	private void invokeCallback(Callback callback, RpcResponse response, Route dest, List<Route> srcs) {
 		URI targetUri = dest.hops[0];
 		RpcHandler handler = handlers.get(targetUri.getSchemeSpecificPart());
 		if (handler != null) handler.handle(response, dest, srcs, callback);
 		else System.err.println("Callback target not found " + targetUri);
 	}
-	
+
 	public static class Options {
 		public long cleanupInterval = 30*1000;
 	}

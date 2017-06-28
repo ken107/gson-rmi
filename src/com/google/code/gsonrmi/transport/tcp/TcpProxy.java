@@ -24,13 +24,13 @@ import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 
 public class TcpProxy extends Proxy {
-	
+
 	private final List<TcpListener> listeners;
-	
+
 	public TcpProxy(List<InetSocketAddress> listeningAddresses, Transport transport, Gson serializer) throws IOException {
 		this(listeningAddresses, transport, serializer, null);
 	}
-	
+
 	public TcpProxy(List<InetSocketAddress> listeningAddresses, Transport transport, Gson serializer, Options options) throws IOException {
 		super(transport, serializer, options);
 		listeners = new LinkedList<TcpListener>();
@@ -67,7 +67,7 @@ public class TcpProxy extends Proxy {
 		}
 		return null;
 	}
-	
+
 	private class TcpListener extends Thread {
 		private final ServerSocket ss;
 
@@ -75,7 +75,7 @@ public class TcpProxy extends Proxy {
 			ss = new ServerSocket();
 			ss.bind(address);
 		}
-		
+
 		public void shutdown() {
 			try {
 				ss.close();
@@ -84,7 +84,7 @@ public class TcpProxy extends Proxy {
 				e.printStackTrace();
 			}
 		}
-		
+
 		@Override
 		public void run() {
 			try {
@@ -104,25 +104,25 @@ public class TcpProxy extends Proxy {
 			}
 		}
 	}
-	
+
 	private class TcpConnection extends Thread implements Connection {
 		private Socket s;
 		private volatile PrintWriter out;
 		private final URI remoteAddr;
 		private final List<Message> sendQueue;
-		
+
 		public TcpConnection(Socket socket, String remoteAuthority) throws URISyntaxException, IOException {
 			s = socket;
 			if (s != null) out = new PrintWriter(new OutputStreamWriter(s.getOutputStream(), "utf-8"), true);
 			remoteAddr = new URI(getScheme(), remoteAuthority, null, null, null);
 			sendQueue = new LinkedList<Message>();
 		}
-		
+
 		@Override
 		public String getRemoteAuthority() {
 			return remoteAddr.getAuthority();
 		}
-		
+
 		@Override
 		public void shutdown() {
 			try {
@@ -132,7 +132,7 @@ public class TcpProxy extends Proxy {
 				e.printStackTrace();
 			}
 		}
-		
+
 		@Override
 		public void send(Message m) {
 			if (out != null) send(m, out);
@@ -143,13 +143,13 @@ public class TcpProxy extends Proxy {
 				if (out != null) send(m, out);
 			}
 		}
-		
+
 		private void send(Message m, PrintWriter pw) {
 			LinkedList<Route> dests = new LinkedList<Route>();
 			for (Route dest : m.dests) dests.add(dest.removeFirst());
 			pw.println(gson.toJson(new Message(m.src, dests, m.content, m.contentType)));
 		}
-		
+
 		@Override
 		public void run() {
 			try {

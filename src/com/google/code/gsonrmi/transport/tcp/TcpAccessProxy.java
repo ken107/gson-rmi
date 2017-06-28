@@ -29,14 +29,14 @@ import com.google.code.gsonrmi.transport.Transport.Shutdown;
 import com.google.gson.Gson;
 
 public class TcpAccessProxy extends Proxy {
-	
+
 	private final Listener listener;
 	private final Options opts;
-	
+
 	public TcpAccessProxy(List<InetSocketAddress> listeningAddresses, Transport transport, Gson serializer) throws IOException {
 		this(listeningAddresses, transport, serializer, null);
 	}
-	
+
 	public TcpAccessProxy(List<InetSocketAddress> listeningAddresses, Transport transport, Gson serializer, Options options) throws IOException {
 		super(transport, serializer, options);
 		listener = new Listener(listeningAddresses);
@@ -53,13 +53,13 @@ public class TcpAccessProxy extends Proxy {
 	protected Connection createConnection(String remoteAuthority) {
 		return null;
 	}
-	
+
 	@Override
 	protected void handle(Shutdown m) {
 		super.handle(m);
 		listener.shutdown();
 	}
-	
+
 	protected void setSocketOptions(SocketChannel sc) throws IOException {
 		sc.setOption(StandardSocketOptions.SO_KEEPALIVE, opts.keepAlive);
 	}
@@ -67,7 +67,7 @@ public class TcpAccessProxy extends Proxy {
 	private class Listener extends Thread {
 		private final Selector selector;
 		private boolean shutdown;
-		
+
 		public Listener(List<InetSocketAddress> addresses) throws IOException {
 			selector = Selector.open();
 			for (InetSocketAddress address : addresses) {
@@ -77,7 +77,7 @@ public class TcpAccessProxy extends Proxy {
 				channel.register(selector, SelectionKey.OP_ACCEPT);
 			}
 		}
-		
+
 		public void shutdown() {
 			shutdown = true;
 			selector.wakeup();
@@ -124,7 +124,7 @@ public class TcpAccessProxy extends Proxy {
 			}
 		}
 	}
-	
+
 	private class AccessConnection implements Connection {
 		private final SelectionKey key;
 		private final URI remoteAddr;
@@ -132,7 +132,7 @@ public class TcpAccessProxy extends Proxy {
 		private final ByteBuffer writeBuffer;
 		private final Queue<ByteBuffer> sendQueue;
 		private final List<Message> onConnectionClose;
-		
+
 		public AccessConnection(SelectionKey selectionKey, URI remoteAddress) {
 			key = selectionKey;
 			remoteAddr = remoteAddress;
@@ -141,7 +141,7 @@ public class TcpAccessProxy extends Proxy {
 			sendQueue = new ConcurrentLinkedQueue<ByteBuffer>();
 			onConnectionClose = new LinkedList<Message>();
 		}
-		
+
 		public void read() {
 			SocketChannel sc = (SocketChannel) key.channel();
 			try {
@@ -177,7 +177,7 @@ public class TcpAccessProxy extends Proxy {
 				}
 			}
 		}
-		
+
 		public void write() {
 			SocketChannel sc = (SocketChannel) key.channel();
 			while (writeBuffer.hasRemaining() && !sendQueue.isEmpty()) {
@@ -251,12 +251,12 @@ public class TcpAccessProxy extends Proxy {
 				e.printStackTrace();
 			}
 		}
-		
+
 		private void onClose() {
 			for (Message m : onConnectionClose) transport.send(new Message(null, Arrays.asList(m.src), new DeliveryFailure(m)));
 		}
 	}
-	
+
 	public static class Options extends Proxy.Options {
 		public int readBufferSize = 4096;
 		public int writeBufferSize = 4096;

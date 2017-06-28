@@ -8,7 +8,7 @@ public class InvalidSessionException extends ParamValidationException {
 
 	public InvalidSessionException() {
 	}
-	
+
 	public InvalidSessionException(String message) {
 		super(message);
 	}

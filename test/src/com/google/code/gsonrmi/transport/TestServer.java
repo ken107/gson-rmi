@@ -25,22 +25,22 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 public class TestServer {
-	
+
 	private final Transport t;
-	
+
 	public TestServer(Transport t) {
 		this.t = t;
 	}
-	
+
 	@RMI
 	public void noop() {
 	}
-	
+
 	@RMI
 	public String echo(String s) {
 		return s;
 	}
-	
+
 	@RMI
 	public Mapper<Person> basic(int id, String name, Date birthday, Person person, List<Person> people, @ParamType(Roster.class) Mapper<Person> roster) {
 		roster.get().put(id, new Person(id, name, birthday));
@@ -48,46 +48,46 @@ public class TestServer {
 		for (Person p : people) roster.get().put(p.id, p);
 		return roster;
 	}
-	
+
 	@RMI
 	public void throwError() throws Exception {
 		throw new InterruptedException("interrupted");
 	}
-	
+
 	@RMI
 	public void throwRuntimeError() {
 		int[] a = new int[0];
 		a[0] = 1;
 	}
-	
+
 	@RMI
 	private void privateMethod() {
 	}
-	
+
 	@RMI
 	protected void protectedMethod() {
 	}
-	
+
 	@RMI(value="alternateName")
 	public String realName() {
 		return "OK";
 	}
-	
+
 	@RMI
 	public Route sourceInject(@Src Route from) {
 		return from;
 	}
-	
+
 	@RMI
 	public void sessionWithCreate(@Session(create=true) MySession session, Person person) {
 		session.person = person;
 	}
-	
+
 	@RMI
 	public Person sessionWithoutCreate(@Session MySession session) {
 		return session.person;
 	}
-	
+
 	@RMI
 	public void shutdown() {
 		t.shutdown();
@@ -102,7 +102,7 @@ public class TestServer {
 		new RmiService(t, gson).start();
 		new Call(new Route(new URI("rmi:service")), "register", "test", new TestServer(t)).send(t);
 	}
-	
+
 	public static class Person {
 		public int id;
 		public String name;
@@ -117,11 +117,11 @@ public class TestServer {
 			return "[" + id + " " + name + " " + birthday.getTime() + "]";
 		}
 	}
-	
+
 	public static interface Mapper<T> {
 		Map<Integer, T> get();
 	}
-	
+
 	public static class Roster implements Mapper<Person> {
 		private Map<Integer, Person> m = new HashMap<Integer, Person>();
 		@Override
@@ -129,7 +129,7 @@ public class TestServer {
 			return m;
 		}
 	}
-	
+
 	public static class MySession extends AbstractSession {
 		public Person person;
 	}

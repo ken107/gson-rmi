@@ -11,7 +11,7 @@ public class Collections {
 	public static interface Groupable<K> {
 		K getGroupKey(Object groupBy);
 	}
-	
+
 	public static <K, V extends Groupable<K>> Map<K, List<V>> group(Collection<V> elements, Object by) {
 		Map<K, List<V>> out = new HashMap<K, List<V>>();
 		for (V element : elements) {

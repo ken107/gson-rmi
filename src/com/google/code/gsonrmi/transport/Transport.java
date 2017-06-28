@@ -11,22 +11,22 @@ public class Transport {
 
 	private final Map<String, Queue<Message>> queues;
 	private final Timer timer;
-	
+
 	public Transport() {
 		queues = new HashMap<String, Queue<Message>>();
 		timer = new Timer();
 	}
-	
+
 	public void shutdown() {
 		Message m = new Message(null, null, new Shutdown());
 		for (Queue<Message> queue : queues.values()) queue.add(m);
 		timer.cancel();
 	}
-	
+
 	public void register(String scheme, Queue<Message> messageQueue) {
 		queues.put(scheme, messageQueue);
 	}
-	
+
 	public void send(Message m) {
 		for (Map.Entry<String, List<Route>> entry : Collections.group(m.dests, Route.GroupBy.SCHEME).entrySet()) {
 			Queue<? super Message> queue = queues.get(entry.getKey());
@@ -37,19 +37,19 @@ public class Transport {
 			}
 		}
 	}
-	
+
 	public TimerTask sendAfter(Message m, long delay) {
 		TimerTask task = new SendTask(m);
 		timer.schedule(task, delay);
 		return task;
 	}
-	
+
 	public TimerTask sendEvery(Message m, long delay, long period) {
 		TimerTask task = new SendTask(m);
 		timer.schedule(task, delay, period);
 		return task;
 	}
-	
+
 	private class SendTask extends TimerTask {
 		private final Message message;
 		private SendTask(Message m) {
@@ -60,7 +60,7 @@ public class Transport {
 			send(message);
 		}
 	}
-	
+
 	public static class Shutdown {
 	}
 }

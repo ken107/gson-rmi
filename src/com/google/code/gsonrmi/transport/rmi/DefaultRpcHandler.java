@@ -24,17 +24,17 @@ import com.google.code.gsonrmi.transport.Route;
 import com.google.gson.Gson;
 
 public class DefaultRpcHandler implements RpcHandler {
-	
+
 	private final Object target;
 	private final Invoker invoker;
 	private final Map<String, AbstractSession> sessions;
-	
+
 	public DefaultRpcHandler(Object target, Gson paramDeserializer) {
 		this.target = target;
 		invoker = new Invoker(new CustomParamProcessor(paramDeserializer));
 		sessions = new HashMap<String, AbstractSession>();
 	}
-	
+
 	@Override
 	public RpcResponse handle(RpcRequest request, Route dest, Route src) {
 		RpcResponse response = invoker.doInvoke(request, target, new Context(dest, src));
@@ -54,13 +54,13 @@ public class DefaultRpcHandler implements RpcHandler {
 			}
 			else new RuntimeException("Session id is null").printStackTrace();
 		}
-		
+
 		RpcRequest request = new RpcRequest();
 		request.method = callback.method;
 		request.params = Arrays.copyOf(callback.params, callback.params.length+2);
 		request.params[request.params.length-2] = response.result;
 		request.params[request.params.length-1] = response.error != null ? new Parameter(response.error) : null;
-		
+
 		for (Route src : srcs) {
 		RpcResponse r = invoker.doInvoke(request, target, new Context(dest, src));
 		if (r.error != null) {
@@ -69,7 +69,7 @@ public class DefaultRpcHandler implements RpcHandler {
 		}
 		}
 	}
-	
+
 	@Override
 	public void shutdown() {
 	}
@@ -86,7 +86,7 @@ public class DefaultRpcHandler implements RpcHandler {
 		}
 		if (sessions.size() < count) System.err.println("INFO: " + target.getClass().getSimpleName() + "-" + (target.hashCode() % 1000) + " cleanup sessions " + count + " -> " + sessions.size());
 	}
-	
+
 	private AbstractSession getSession(String sessionId, Type type, boolean create) {
 		AbstractSession session = null;
 		if (sessionId != null) {
@@ -120,22 +120,22 @@ public class DefaultRpcHandler implements RpcHandler {
 		if (session != null) session.lastAccessed = System.currentTimeMillis();
 		return session;
 	}
-	
+
 	private static class Context {
 		public final Route dest;
 		public final Route src;
-		
+
 		public Context(Route dest, Route src) {
 			this.dest = dest;
 			this.src = src;
 		}
 	}
-	
+
 	private class CustomParamProcessor extends DefaultParamProcessor {
 		public CustomParamProcessor(Gson paramDeserializer) {
 			super(paramDeserializer);
 		}
-		
+
 		@Override
 		public Object injectParam(Type paramType, Annotation[] paramAnnotations, Object context) throws ParamValidationException {
 			Context c = (Context) context;

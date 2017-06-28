@@ -24,9 +24,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 public class TestClient {
-	
+
 	private final Gson gson;
-	
+
 	public TestClient(Gson gson) {
 		this.gson = gson;
 	}
@@ -35,17 +35,17 @@ public class TestClient {
 	public void returnRoster(Roster value, RpcError error) {
 		for (Person p : value.get().values()) System.out.println(p);
 	}
-	
+
 	@RMI
 	public void returnRoute(String marker, Route value, RpcError error) {
 		System.out.println(marker + " " + value.hops);
 	}
-	
+
 	@RMI
 	public void returnString(String marker, String value, RpcError error) {
 		System.out.println(marker + " " + value);
 	}
-	
+
 	@RMI
 	public void returnError(String marker, Object value, RpcError error) {
 		String details = "";
@@ -53,22 +53,22 @@ public class TestClient {
 		else if (error.equals(RpcError.PARAM_VALIDATION_FAILED)) details = error.data.getValue(String.class, gson);
 		System.out.println(marker + " [" + error + " " + details + "]");
 	}
-	
+
 	@RMI
 	public void returnWithNewSession(String marker, Person value, @Session(create=true) AbstractSession session, RpcError error) {
 		System.out.println(marker + " OK");
 	}
-	
+
 	@RMI
 	public void returnPersonWithExistingSession(String marker, Person value, @Session AbstractSession session, RpcError error) {
 		System.out.println(marker + " " + value);
 	}
-	
+
 	@RMI
 	public void returnWithSpecifiedSession(String marker, Object value, @Session MySession session, RpcError error) {
 		System.out.println(marker + " " + session.person);
 	}
-	
+
 	public static void main(String[] args) throws IOException, URISyntaxException, InterruptedException {
 		Gson gson = new GsonBuilder()
 				.registerTypeAdapter(Exception.class, new ExceptionSerializer())
@@ -77,7 +77,7 @@ public class TestClient {
 		new TcpProxy(Arrays.asList(new InetSocketAddress(30101)), t, gson).start();
 		new RmiService(t, gson).start();
 		new Call(new Route(new URI("rmi:service")), "register", "testClient", new TestClient(gson)).send(t);
-		
+
 		//data
 		Person john = new Person(1, "John", new Date(1364227080000L));
 		Person jane = new Person(2, "Jane", new Date(1364226080000L));
@@ -86,12 +86,12 @@ public class TestClient {
 		Person joey = new Person(5, "Joey", new Date(1364223080000L));
 		Roster roster = new Roster();
 		roster.get().put(joey.id, joey);
-		
+
 		//normal tests
 		Route to = new Route(new URI("tcp://localhost:30100"), new URI("rmi:test"));
 		URI from = new URI("rmi:testClient");
 		new Call(to, "basic", john.id, john.name, john.birthday, jane, Arrays.asList(jami, jack), roster).callback(from, "returnRoster").send(t);
-		
+
 		//error tests
 		Route unreachable = new Route(new URI("tcp://somewhere:100"), new URI("rmi:test"));
 		Route badTarget = new Route(new URI("tcp://localhost:30100"), new URI("rmi:badTarget"));
@@ -106,7 +106,7 @@ public class TestClient {
 		new Call(to, "protectedMethod").callback(from, "returnError", "protectedMethod").send(t);
 		new Call(to, "alternateName").callback(from, "returnString", "alternateName").send(t);
 		new Call(to, "sourceInject").callback(from, "returnRoute", "sourceInject").send(t);
-		
+
 		//session tests
 		Route toSession = new Route(new URI("tcp://localhost:30100"), new URI("rmi:test#" + UUID.randomUUID()));
 		Route toBadSession = new Route(new URI("tcp://localhost:30100"), new URI("rmi:test#" + UUID.randomUUID()));
@@ -119,7 +119,7 @@ public class TestClient {
 		new Call(toSession, "sessionWithoutCreate").callback(fromSession, "returnPersonWithExistingSession", "sessionWithoutCreate").send(t);
 		new Call(toBadSession, "sessionWithoutCreate").callback(fromSession, "returnError", "sessionWithoutCreate-badSessionId").send(t);
 		new Call(toSession, "sessionWithoutCreate").callback(from, "returnWithSpecifiedSession", "specifyLocalSession").session(session).send(t);
-		
+
 		//shutdown
 		Thread.sleep(3000);
 		new Call(to, "shutdown").send(t);

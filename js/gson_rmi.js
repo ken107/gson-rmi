@@ -7,7 +7,7 @@ function RmiService(sendFunc, errorFunc) {
 	var RPC_REQUEST = "com.google.code.gsonrmi.RpcRequest";
 	var RPC_RESPONSE = "com.google.code.gsonrmi.RpcResponse";
 	var DELIVERY_FAILURE = "com.google.code.gsonrmi.transport.DeliveryFailure";
-	
+
 	var handlers = {};
 	this.register = function(targetId, target) {
 		handlers[targetId] = {
@@ -18,7 +18,7 @@ function RmiService(sendFunc, errorFunc) {
 	this.unregister = function(targetId) {
 		delete handlers[targetId];
 	};
-	
+
 	var pendingCalls = {};
 	var idGen = 0;
 	this.call = function(dest, method, args, callback, session) {
@@ -39,14 +39,14 @@ function RmiService(sendFunc, errorFunc) {
 			contentType: RPC_REQUEST
 		});
 	};
-	
+
 	this.receive = function(m) {
 		if (m.contentType == RPC_REQUEST) for (var i in m.dests) handleRequest(m.content, m.dests[i], m.src);
 		else if (m.contentType == RPC_RESPONSE) handleResponse(m.content, m.dests[0], [m.src]);
 		else if (m.contentType == DELIVERY_FAILURE) handleDeliveryFailure(m.content, m.dests[0], m.src);
 		else errorFunc("Unhandled message type", m.contentType);
 	};
-	
+
 	function handleRequest(request, dest, src) {
 		var response = {jsonrpc: "2.0", id: request.id};
 		var targetUri = dest.hops[0];
@@ -75,11 +75,19 @@ function RmiService(sendFunc, errorFunc) {
 			else response.error = {code: -32601, message: "Method not found"};
 		}
 		else response.error = {code: -32010, message: "Target not found", data: targetUri};
-		
-		if (response.id) sendFunc({src: dest, dests: [src], content: response, contentType: RPC_RESPONSE});
+
+		if (response.id) {
+			if (response.result && typeof response.result.then == "function") {
+				response.result.then(function(result) {
+					response.result = result;
+					sendFunc({src: dest, dests: [src], content: response, contentType: RPC_RESPONSE});
+				})
+			}
+			else sendFunc({src: dest, dests: [src], content: response, contentType: RPC_RESPONSE});
+		}
 		else if (response.error) errorFunc("Notification failed", targetUri, request.method, response.error);
 	}
-	
+
 	function handleResponse(response, dest, srcs) {
 		var callback = pendingCalls[response.id];
 		if (callback) {
@@ -117,7 +125,7 @@ function RmiService(sendFunc, errorFunc) {
 		}
 		else errorFunc("No pending request", response.id);
 	}
-	
+
 	function handleDeliveryFailure(failure, dest, src) {
 		var m = failure.message;
 		if (m.contentType == RPC_REQUEST) {
@@ -129,7 +137,7 @@ function RmiService(sendFunc, errorFunc) {
 		}
 		else if (m.contentType == RPC_RESPONSE) errorFunc("Failed to deliver response", m.content.id);
 		else errorFunc("Unhandled delivery failure", m.contentType);
-		
+
 		function prependToEach(dests, src) {
 			var out = [];
 			for (var i in dests) {
@@ -141,7 +149,7 @@ function RmiService(sendFunc, errorFunc) {
 			return out;
 		}
 	}
-	
+
 	setInterval(function() {
 		var now = new Date().getTime();
 		for (var i in pendingCalls) if (now-pendingCalls[i].lastSent > 60*1000) delete pendingCalls[i];

@@ -4,7 +4,7 @@
     <info
         organisation="com.google.code"
         module="gson-rmi"
-        revision="0.1"
+        revision="0.2"
         status="release">
 	</info>
     <dependencies>

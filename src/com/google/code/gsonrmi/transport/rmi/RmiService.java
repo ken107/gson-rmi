@@ -74,14 +74,14 @@ public class RmiService extends MessageProcessor {
 		m.timeSent = System.currentTimeMillis();
 		if ("_onConnectionClosed".equals(m.method)) {
 			if (m.params.length != 0) System.err.println("WARN: _onConnectionClosed accepts no params");
-			if (m.callback != null) {
+			if (m.callback != null && m.callback.method != null) {
 				Proxy.OnConnectionClosed request = new Proxy.OnConnectionClosed();
 				Parameter[] data = Arrays.copyOf(m.callback.params, m.callback.params.length+1);
 				data[data.length-1] = new Parameter(m.callback.method);
 				request.data = new Parameter(data);
 				t.send(new Message(m.callback.target, m.targets, request));
 			}
-			else System.err.println("_onConnectionClosed requires a callback");
+			else System.err.println("_onConnectionClosed requires a serializable callback");
 		}
 		else {
 			Integer id = null;

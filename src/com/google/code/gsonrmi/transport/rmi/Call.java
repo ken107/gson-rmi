@@ -6,8 +6,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.TimerTask;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 
 import com.google.code.gsonrmi.Parameter;
+import com.google.code.gsonrmi.RpcError;
 import com.google.code.gsonrmi.transport.Message;
 import com.google.code.gsonrmi.transport.Route;
 import com.google.code.gsonrmi.transport.Transport;
@@ -39,6 +41,13 @@ public class Call {
 
 	public boolean isExpired() {
 		return expireSec > 0 && System.currentTimeMillis()-timeSent > expireSec*1000;
+	}
+
+	public Call callback(URI target, BiConsumer<Parameter, RpcError> consumer) {
+		callback = new Callback();
+		callback.target = new Route(target);
+		callback.consumer = consumer;
+		return this;
 	}
 
 	public Call callback(URI target, String method, Object... params) {

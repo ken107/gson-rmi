@@ -55,6 +55,11 @@ public class DefaultRpcHandler implements RpcHandler {
 			else new RuntimeException("Session id is null").printStackTrace();
 		}
 
+		if (callback.consumer != null) {
+			callback.consumer.accept(response.result, response.error);
+			return;
+		}
+
 		RpcRequest request = new RpcRequest();
 		request.method = callback.method;
 		request.params = Arrays.copyOf(callback.params, callback.params.length+2);

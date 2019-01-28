@@ -48,11 +48,14 @@ public class DefaultRpcHandler implements RpcHandler {
 	@Override
 	public void handle(RpcResponse response, Route dest, List<Route> srcs, Callback callback) {
 		if (callback.session != null) {
-			if (callback.session.id != null) {
+			if (callback.session.id == dest.hops[0].getFragment()) {
 			sessions.put(callback.session.id, callback.session);
 			callback.session.lastAccessed = System.currentTimeMillis();
 			}
-			else new RuntimeException("Session id is null").printStackTrace();
+			else {
+				new Exception("Response session id mismatch").printStackTrace();
+				return;
+			}
 		}
 
 		if (callback.consumer != null) {

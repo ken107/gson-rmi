@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import com.google.code.gsonrmi.DefaultParamProcessor;
 import com.google.code.gsonrmi.Invoker;
@@ -48,7 +49,7 @@ public class DefaultRpcHandler implements RpcHandler {
 	@Override
 	public void handle(RpcResponse response, Route dest, List<Route> srcs, Callback callback) {
 		if (callback.session != null) {
-			if (callback.session.id == dest.hops[0].getFragment()) {
+			if (Objects.equals(callback.session.id, dest.hops[0].getFragment())) {
 			sessions.put(callback.session.id, callback.session);
 			callback.session.lastAccessed = System.currentTimeMillis();
 			}

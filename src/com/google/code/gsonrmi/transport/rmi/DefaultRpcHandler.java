@@ -1,6 +1,7 @@
 package com.google.code.gsonrmi.transport.rmi;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
@@ -109,7 +110,7 @@ public class DefaultRpcHandler implements RpcHandler {
 				if (create)
 				try {
 					if (type instanceof ParameterizedType) type = ((ParameterizedType) type).getRawType();
-					sessions.put(sessionId, session = (AbstractSession) ((Class<?>) type).newInstance());
+					sessions.put(sessionId, session = (AbstractSession) ((Class<?>) type).getDeclaredConstructor().newInstance());
 					session.id = sessionId;
 				}
 				catch (ClassCastException e) {
@@ -119,6 +120,12 @@ public class DefaultRpcHandler implements RpcHandler {
 					e.printStackTrace();
 				}
 				catch (IllegalAccessException e) {
+					e.printStackTrace();
+				}
+				catch (InvocationTargetException e) {
+					e.printStackTrace();
+				}
+				catch (NoSuchMethodException e) {
 					e.printStackTrace();
 				}
 			}

@@ -10,8 +10,6 @@ import com.google.code.gsonrmi.Parameter;
 import com.google.code.gsonrmi.annotations.RMI;
 import com.google.code.gsonrmi.serializer.ExceptionSerializer;
 import com.google.code.gsonrmi.serializer.ParameterSerializer;
-import com.google.code.gsonrmi.transport.Route;
-import com.google.code.gsonrmi.transport.Transport;
 import com.google.code.gsonrmi.transport.rmi.Call;
 import com.google.code.gsonrmi.transport.rmi.RmiService;
 import com.google.code.gsonrmi.transport.tcp.TcpProxy;

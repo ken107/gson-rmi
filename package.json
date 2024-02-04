@@ -1,0 +1,21 @@
+{
+  "name": "@lsdsoftware/gson-rmi",
+  "version": "1.0.1",
+  "description": "Browser JavaScript library for communicating with GSON-RMI peers",
+  "main": "js/gson_rmi.js",
+  "types": "js/gson_rmi.d.ts",
+  "files": [
+    "js/gson_rmi.js",
+    "js/gson_rmi.d.ts"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ken107/gson-rmi.git"
+  },
+  "author": "Hai Phan <hai.phan@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ken107/gson-rmi/issues"
+  },
+  "homepage": "https://github.com/ken107/gson-rmi#readme"
+}

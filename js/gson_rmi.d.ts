@@ -1,5 +1,5 @@
 
-export class Callback {
+export declare class Callback {
   constructor(target: Route, method: string, args?: unknown[]);
   target: Route;
   method: string;
@@ -7,7 +7,7 @@ export class Callback {
   lastSent: number;
 }
 
-export class RmiService {
+export declare class RmiService {
   constructor(sendFunc: (m: Message) => void, logError: Console["error"]);
   register(targetId: string, target: Record<string, Function>): void;
   unregister(targetId: string): void;
@@ -15,38 +15,38 @@ export class RmiService {
   receive: (m: Message) => void;
 }
 
-export class Route {
+export declare class Route {
   constructor(...hops: string[]);
   hops: string[];
 }
 
-interface Message {
+export interface Message {
   src: Route
   dests: Route[]
   contentType: string
   content: JsonRpcRequest|JsonRpcSuccessResponse|JsonRpcErrorResponse
 }
 
-interface JsonRpcRequest {
+export interface JsonRpcRequest {
   jsonrpc: "2.0"
   method: string
   params?: unknown[]
   id?: number
 }
 
-interface JsonRpcSuccessResponse {
+export interface JsonRpcSuccessResponse {
   jsonrpc: "2.0"
   result: unknown
   id: number
 }
 
-interface JsonRpcErrorResponse {
+export interface JsonRpcErrorResponse {
   jsonrpc: "2.0"
   error: JsonRpcError
   id: number
 }
 
-interface JsonRpcError {
+export interface JsonRpcError {
   code: number
   message: string
   data?: unknown

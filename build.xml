@@ -13,31 +13,17 @@
 		<ivy:cachepath pathid="ivy.cachepath" />
 	</target>
 	
-	<!-- build -->
-	<target name="build" depends="resolve">
-		<mkdir dir="${build.dir}/classes"/>
-		<javac srcdir="${src.dir}" destdir="${build.dir}/classes" includeantruntime="false" debug="true" debuglevel="lines,vars,source">
-			<classpath refid="ivy.cachepath"></classpath>
-		</javac>
-	</target>
-	
 	<!-- package -->
-	<target name="package" depends="build">
+	<target name="package" depends="resolve">
 		<jar file="${build.dir}/${jar.filename}">
 			<fileset dir="src"></fileset>
-			<fileset dir="${build.dir}/classes"></fileset>
+			<fileset dir="${build.dir}/bin"></fileset>
 		</jar>
 	</target>
 
 	<!-- publish -->
 	<target name="publish" depends="package">
 		<ivy:publish resolver="local" overwrite="true" artifactspattern="${build.dir}/[artifact].[ext]" srcivypattern="[artifact].[ext]" />
-	</target>
-	
-	<!-- clean -->
-	<target name="clean">
-		<delete dir="${build.dir}/classes" />
-		<delete file="${build.dir}/${jar.filename}" />
 	</target>
 
 </project>
